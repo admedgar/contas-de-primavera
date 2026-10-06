@@ -15,3 +15,5 @@ fase1/amostras/*
 fase1/RELATORIO_FASE1.md
 
 .vercel/
+.vercel
+.env*

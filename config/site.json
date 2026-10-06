@@ -1,6 +1,6 @@
 {
   "_comentario": "url_site (sem barra final) é usada nos metadados de compartilhamento, sitemap e feed; contato aparece na página Metodologia.",
   "nome": "Contas de Primavera",
-  "url_site": "https://admedgar.github.io/contas-de-primavera",
+  "url_site": "https://contas-de-primavera.vercel.app",
   "contato": "https://github.com/admedgar/contas-de-primavera/issues"
 }
