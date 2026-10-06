@@ -84,6 +84,19 @@ Passo a passo (uma vez):
 
 Se algo falhar o job fica vermelho e o GitHub envia e-mail; o site continua com a última versão publicada. Domínio próprio (opcional): Settings → Pages → Custom domain (um `.com.br` custa cerca de R$ 40 por ano no Registro.br).
 
+### Publicar também na Vercel (opcional)
+
+O site é estático, então a Vercel só hospeda a pasta `dist/` que a execução diária gera (os dados não ficam no Git; por isso a Vercel não "puxa" do repositório: **o GitHub Actions envia** o site pronto, depois de conferido). Passo a passo (uma vez):
+
+1. Conta em vercel.com (o plano *Hobby* é gratuito, mas de uso não comercial) e `npx vercel@latest login`.
+2. Na pasta do projeto: `npx vercel@latest link --yes --project contas-de-primavera` (cria o projeto e o arquivo local `.vercel/project.json` com os identificadores).
+3. Criar um token em vercel.com/account/tokens (escopo da sua conta, com validade) e guardar no GitHub: `gh secret set VERCEL_TOKEN --repo admedgar/contas-de-primavera` (cole o token no prompt; ele nunca vai para o código).
+4. Gravar os identificadores como variáveis do repositório: `VERCEL_ORG_ID` e `VERCEL_PROJECT_ID` (valores de `.vercel/project.json`).
+5. Rodar o workflow "Atualização diária". O passo "Publicar na Vercel" só roda se `VERCEL_TOKEN` existir e a conferência dos dados tiver passado.
+6. Atualizar `url_site` em `config/site.json` para o endereço da Vercel (para a imagem de prévia e o feed). O GitHub Pages pode continuar como reserva ou ser desativado.
+
+`web/vercel.json` define cabeçalhos de segurança e cache curto para `/data/`.
+
 ### Configurações versionadas (`config/`)
 
 | Arquivo | Para quê |

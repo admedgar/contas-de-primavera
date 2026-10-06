@@ -163,6 +163,15 @@ class Workflow(unittest.TestCase):
         self.assertIn("rc == '0' || steps.diario.outputs.rc == '1'", y)      # divergência (2/3) nunca publica
         self.assertNotIn("hotmail", y.lower())
 
+    def test_deploy_vercel_e_opcional_e_so_com_dados_conferidos(self):
+        y = (config.RAIZ / ".github" / "workflows" / "diario.yml").read_text(encoding="utf-8")
+        i = y.index("Publicar na Vercel")
+        passo = y[i:i + 400]
+        self.assertIn("env.VERCEL_TOKEN != ''", passo); self.assertIn("rc == '0'", passo)    # sem token ou com divergência, não publica
+        self.assertIn("secrets.VERCEL_TOKEN", y)                                            # token só como segredo
+        v = json.loads((config.RAIZ / "web" / "vercel.json").read_text(encoding="utf-8"))
+        self.assertTrue(any("/data/" in h["source"] for h in v["headers"]))
+
     def test_nenhum_email_pessoal_no_codigo(self):
         for p in list((config.RAIZ / "contas").rglob("*.py")) + list((config.RAIZ / "web").glob("*.js")) + list((config.RAIZ / "config").glob("*.json")):
             self.assertNotIn("hotmail", p.read_text(encoding="utf-8").lower(), p)

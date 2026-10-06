@@ -13,3 +13,5 @@ fase1/amostras/*
 
 # Relatório de trabalho da Fase 1 (cita pessoas por nome; fica só na máquina local)
 fase1/RELATORIO_FASE1.md
+
+.vercel/

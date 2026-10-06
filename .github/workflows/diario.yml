@@ -29,6 +29,9 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     env:
       CONTAS_CONTATO: ${{ vars.CONTAS_CONTATO }}      # vai no User-Agent enviado ao portal (opcional, recomendado)
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}        # opcional: se existir, o site também é publicado na Vercel
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -77,6 +80,10 @@ jobs:
         id: deploy
         if: steps.diario.outputs.rc == '0' || steps.diario.outputs.rc == '1'
         uses: actions/deploy-pages@v4
+
+      - name: Publicar na Vercel (só se VERCEL_TOKEN estiver configurado)
+        if: (steps.diario.outputs.rc == '0' || steps.diario.outputs.rc == '1') && env.VERCEL_TOKEN != ''
+        run: npx --yes vercel@latest deploy dist --prod --yes --token "$VERCEL_TOKEN"
 
       - name: Avisar novos alertas (webhook opcional)
         if: steps.diario.outputs.rc == '0' || steps.diario.outputs.rc == '1'
