@@ -1,0 +1,96 @@
+# Atualização diária: coleta no portal oficial, confere os totais, registra alertas, publica o site no GitHub Pages.
+# Configuração única no repositório: Settings > Pages > Source = "GitHub Actions". Variáveis/segredos opcionais no README.
+name: Atualização diária
+on:
+  schedule:
+    - cron: "17 7 * * *"          # 07:17 UTC = 03:17 em Cuiabá (horário de baixo uso do portal)
+  workflow_dispatch:
+    inputs:
+      completo:
+        description: "Revisar também os anos fechados (2 anteriores)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: contas-diario
+  cancel-in-progress: false
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    env:
+      CONTAS_CONTATO: ${{ vars.CONTAS_CONTATO }}      # vai no User-Agent enviado ao portal (opcional, recomendado)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+
+      - name: Restaurar banco (cache; se não houver, o plano diário reconstrói os 3 anos)
+        uses: actions/cache/restore@v4
+        with:
+          path: data/contas.sqlite
+          key: contas-db-${{ github.run_id }}
+          restore-keys: contas-db-
+
+      - name: Testes
+        run: python -m unittest discover -s tests -t .
+
+      - name: Coletar, conferir, registrar alertas e gerar JSONs
+        id: diario
+        run: |
+          set +e
+          python -m contas diario ${{ inputs.completo && '--completo' || '' }}
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Guardar banco para a próxima execução
+        if: always() && hashFiles('data/contas.sqlite') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: data/contas.sqlite
+          key: contas-db-${{ github.run_id }}
+
+      - name: Montar site
+        if: steps.diario.outputs.rc == '0' || steps.diario.outputs.rc == '1'
+        run: python -m contas build
+      - name: Configurar Pages
+        if: steps.diario.outputs.rc == '0' || steps.diario.outputs.rc == '1'
+        uses: actions/configure-pages@v5
+      - name: Enviar site
+        if: steps.diario.outputs.rc == '0' || steps.diario.outputs.rc == '1'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - name: Publicar
+        id: deploy
+        if: steps.diario.outputs.rc == '0' || steps.diario.outputs.rc == '1'
+        uses: actions/deploy-pages@v4
+
+      - name: Avisar novos alertas (webhook opcional)
+        if: steps.diario.outputs.rc == '0' || steps.diario.outputs.rc == '1'
+        env:
+          ALERTA_WEBHOOK_URL: ${{ secrets.ALERTA_WEBHOOK_URL }}
+        run: python -m contas notificar
+
+      - name: Resultado
+        if: always()
+        run: |
+          rc="${{ steps.diario.outputs.rc }}"
+          {
+            echo "### Atualização diária"
+            echo "- código de saída: \`${rc}\` (0 ok · 1 falha em alguma fonte, site publicado com a coleta anterior daquela parte · 2/3 divergência na conferência, **nada publicado**)"
+            if [ -f data/alertas_novos.json ]; then echo "- alertas novos: $(python -c "import json;print(len(json.load(open('data/alertas_novos.json'))))")"; fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$rc" != "0" ]; then echo "::error::Atualização com problema (código ${rc}). Veja o log da etapa de coleta."; exit 1; fi

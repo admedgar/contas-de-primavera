@@ -1,0 +1,13 @@
+{
+  "_comentario": "Divergências que existem NA PRÓPRIA FONTE (dois relatórios do portal que não concordam). Entram como 'aviso' somente enquanto a diferença for exatamente a registrada; se mudar, volta a ser 'divergente'.",
+  "conhecidas": [
+    {
+      "entidade": "prefeitura", "exercicio": 2024, "checagem": "liquidado_vs_portal_por_fornecedor", "diferenca": -37841600,
+      "nota": "Em 2024 o liquidado por fornecedor excede em R$ 378.416,00 o liquidado por órgão e a soma dos empenhos; a diferença está inteira no favorecido 'Prefeitura Municipal'. Verificado em 06/10/2026."
+    },
+    {
+      "entidade": "prefeitura", "exercicio": 2024, "checagem": "liquidado_mensal_orgao_vs_fornecedor", "diferenca": -37841600,
+      "nota": "Mesma diferença de 2024 vista pelas consultas mensais (por fornecedor × por órgão)."
+    }
+  ]
+}

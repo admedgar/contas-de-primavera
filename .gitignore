@@ -1,0 +1,15 @@
+data/
+__pycache__/
+*.pyc
+.DS_Store
+web/data/
+dist/
+
+# Fase 1: só o relatório, a documentação do portal e a amostra usada pelos testes (as demais amostras têm nomes de servidores)
+fase1/*.py
+fase1/amostras/*
+!fase1/amostras/prefeitura_despesas_gerais.json
+.claude/
+
+# Relatório de trabalho da Fase 1 (cita pessoas por nome; fica só na máquina local)
+fase1/RELATORIO_FASE1.md

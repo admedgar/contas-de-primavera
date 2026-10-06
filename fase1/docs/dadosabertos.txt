@@ -1,0 +1,125 @@
+
+Dados Abertos Portal Transparência Fiorilli
+Dados Abertos
+Portal Transparência Fiorilli
+Despesas
+Despesas por Orgão
+GET
+/VersaoJson/Despesas/?ConectarExercicio={ConectarExercicio}&Listagem=DespesasPorOrgao&DiaInicioPeriodo={diaInicio}&MesInicialPeriodo={MesInicio}&DiaFinalPeriodo={diaFinal}&MesFinalPeriodo={MesFinal}&Ano={AnoPeriodo}&Empresa={Entidade}&MostraDadosConsolidado={MostrarDadosTodasEntidades}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/VersaoJson/Despesas/?ConectarExercicio=2026&Listagem=DespesasPorOrgao&DiaInicioPeriodo=01&MesInicialPeriodo=01&DiaFinalPeriodo=31&MesFinalPeriodo=12&Ano=2026&Empresa=1&MostraDadosConsolidado=False 
+Despesas por Unidade
+GET
+/VersaoJson/Despesas/?ConectarExercicio={ConectarExercicio}&Listagem=DespesasPorUnidade&DiaInicioPeriodo={diaInicio}&MesInicialPeriodo={MesInicio}&DiaFinalPeriodo={diaFinal}&MesFinalPeriodo={MesFinal}&Ano={AnoPeriodo}&Empresa={Entidade}&MostraDadosConsolidado={MostrarDadosTodasEntidades}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/VersaoJson/Despesas/?ConectarExercicio=2026&Listagem=DespesasPorUnidade&DiaInicioPeriodo=01&MesInicialPeriodo=01&DiaFinalPeriodo=31&MesFinalPeriodo=12&Ano=2026&Empresa=1&MostraDadosConsolidado=False 
+Despesas por Fornecedor
+GET
+/VersaoJson/Despesas/?ConectarExercicio={ConectarExercicio}&Listagem=DespesasPorFornecedor&DiaInicioPeriodo={diaInicio}&MesInicialPeriodo={MesInicio}&DiaFinalPeriodo={diaFinal}&MesFinalPeriodo={MesFinal}&Ano={AnoPeriodo}&Empresa={Entidade}&MostrarFornecedor={MostrarNomeFavorecido}&MostraDadosConsolidado={MostrarDadosTodasEntidades}&CNPJFornecedor={CNPJ de um Determinado Fornecedor (Opcional)}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/VersaoJson/Despesas/?ConectarExercicio=2026&Listagem=DespesasPorFornecedor&DiaInicioPeriodo=01&MesInicialPeriodo=01&DiaFinalPeriodo=31&MesFinalPeriodo=12&Ano=2026&Empresa=1&MostrarFornecedor=True&MostraDadosConsolidado=False 
+Despesas Gerais
+GET
+/VersaoJson/Despesas/?ConectarExercicio={ConectarExercicio}&Listagem=DespesasGerais&DiaInicioPeriodo={diaInicio}&MesInicialPeriodo={MesInicio}&DiaFinalPeriodo={diaFinal}&MesFinalPeriodo={MesFinal}&Ano={AnoPeriodo}&Empresa={Entidade}&MostrarFornecedor={MostrarNomeFavorecido}&MostraDadosConsolidado={MostrarDadosTodasEntidades}&UFParaFiltroCOVID={UFqueSeInformadaFiltraráEmpenhosCovid}&MostrarCNPJFornecedor={MostrarCNPJFornecedor}&ApenasIDEmpenho={ListarApenasOsCodigosEmpenho}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/VersaoJson/Despesas/?ConectarExercicio=2026&Listagem=DespesasGerais&DiaInicioPeriodo=01&MesInicialPeriodo=01&DiaFinalPeriodo=31&MesFinalPeriodo=12&Ano=2026&Empresa=1&MostrarFornecedor=True&MostraDadosConsolidado=False&UFParaFiltroCOVID=&MostrarCNPJFornecedor=True&ApenasIDEmpenho=False 
+Detalhe Empenho Por Número de Empenho
+GET
+/VersaoJson/Despesas/?ConectarExercicio={ConectarExercicio}&Listagem=DetalhesEmpenhoPorNumeroEmpenho&intNumeroEmpenho={NumeroEmpenho}&strTipoEmpenho={TipoEmpenho}&Empresa={Entidade}&bolMostrarFornecedor={MostrarNomeFavorecido}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/VersaoJson/Despesas/?ConectarExercicio=2026&Listagem=DetalhesEmpenhoPorNumeroEmpenho&intNumeroEmpenho=1&strTipoEmpenho=OR&Empresa=1&bolMostrarFornecedor=False 
+Itens do Empenho Por Número de Empenho
+GET
+/VersaoJson/Despesas/?ConectarExercicio={ConectarExercicio}&Listagem=ItensEmpenhoPorNumeroEmpenho&intNumeroEmpenho={NumeroEmpenho}&strTipoEmpenho={TipoEmpenho}&Empresa={Entidade}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/VersaoJson/Despesas/?ConectarExercicio=2026&Listagem=ItensEmpenhoPorNumeroEmpenho&intNumeroEmpenho=1&strTipoEmpenho=OR&Empresa=1 
+Despesas Empenhado Por Número de Empenho
+GET
+/VersaoJson/Despesas/?ConectarExercicio={ConectarExercicio}&Listagem=EmpenhosDespesas_Empenhado_PorNumeroEmpenho&intNumeroEmpenho={NumeroEmpenho}&strTipoEmpenho={TipoEmpenho}&DiaInicioPeriodo={diaInicio}&MesInicialPeriodo={MesInicio}&DiaFinalPeriodo={DiaFinal}&MesFinalPeriodo={MesFinal}&Ano={AnoPeriodo}&Empresa={Entidade}&IDButton={TipoListagem}&MostrarFornecedor={MostrarNomeFavorecido}&MostraDadosConsolidado={MostrarDadosTodasEntidades}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/VersaoJson/Despesas/?ConectarExercicio=2026&Listagem=EmpenhosDespesas_Empenhado_PorNumeroEmpenho&intNumeroEmpenho=1&strTipoEmpenho=OR&DiaInicioPeriodo=01&MesInicialPeriodo=01&DiaFinalPeriodo=31&MesFinalPeriodo=12&Ano=2026&Empresa=1&IDButton=lnkDespesasPor_NotaEmpenho&MostrarFornecedor=True&MostraDadosConsolidado=False 
+Despesas Liquidado Por Número de Empenho
+GET
+/VersaoJson/Despesas/?ConectarExercicio={ConectarExercicio}&Listagem=EmpenhosDespesas_Liquidado_PorNumeroEmpenho&intNumeroEmpenho={NumeroEmpenho}&strTipoEmpenho={TipoEmpenho}&DiaInicioPeriodo={diaInicio}&MesInicialPeriodo={MesInicio}&DiaFinalPeriodo={DiaFinal}&MesFinalPeriodo={MesFinal}&Ano={AnoPeriodo}&Empresa={Entidade}&IDButton={TipoListagem}&MostrarFornecedor={MostrarNomeFavorecido}&MostraDadosConsolidado={MostrarDadosTodasEntidades}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/VersaoJson/Despesas/?ConectarExercicio=2026&Listagem=EmpenhosDespesas_Liquidado_PorNumeroEmpenho&intNumeroEmpenho=1&strTipoEmpenho=OR&DiaInicioPeriodo=01&MesInicialPeriodo=01&DiaFinalPeriodo=31&MesFinalPeriodo=12&Ano=2026&Empresa=1&IDButton=lnkDespesasPor_NotaEmpenho&bolMostrarFornecedor=True&MostraDadosConsolidado=False 
+Despesas Pago Por Número de Empenho
+GET
+/VersaoJson/Despesas/?ConectarExercicio={ConectarExercicio}&Listagem=EmpenhosDespesas_Pago_PorNumeroEmpenho&intNumeroEmpenho={NumeroEmpenho}&strTipoEmpenho={TipoEmpenho}&DiaInicioPeriodo={diaInicio}&MesInicialPeriodo={MesInicio}&DiaFinalPeriodo={DiaFinal}&MesFinalPeriodo={MesFinal}&Ano={AnoPeriodo}&Empresa={Entidade}&IDButton={TipoListagem}&MostrarFornecedor={MostrarNomeFavorecido}&MostraDadosConsolidado={MostrarDadosTodasEntidades}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/VersaoJson/Despesas/?ConectarExercicio=2026&Listagem=EmpenhosDespesas_Pago_PorNumeroEmpenho&intNumeroEmpenho=1&strTipoEmpenho=OR&DiaInicioPeriodo=01&MesInicialPeriodo=01&DiaFinalPeriodo=31&MesFinalPeriodo=12&Ano=2026&Empresa=1&IDButton=lnkDespesasPor_NotaEmpenho&MostrarFornecedor=True&MostraDadosConsolidado=False 
+Despesas Pago com Número da Ordem de Pagamento Por Número de Empenho
+GET
+/VersaoJson/Despesas/?ConectarExercicio={ConectarExercicio}&Listagem=Empenhos_Pago_ComOrdemPagto_PorNumeroEmpenho&intNumeroEmpenho={NumeroEmpenho}&strTipoEmpenho={TipoEmpenho}&Empresa={Entidade}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/VersaoJson/Despesas/?ConectarExercicio=2026&Listagem=Empenhos_Pago_ComOrdemPagto_PorNumeroEmpenho&intNumeroEmpenho=1&strTipoEmpenho=OR&Empresa=1 
+Ordem Pagto Detalhes Por Número de Empenho
+GET
+/VersaoJson/Despesas/?ConectarExercicio={ConectarExercicio}&Listagem=OrdemPagto_Detalhes_PorNumeroEmpenho&intNumeroEmpenho={NumeroEmpenho}&strTipoEmpenho={TipoEmpenho}&Empresa={Entidade}&strNumeroPagto={NumeroPagto}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/VersaoJson/Despesas/?ConectarExercicio=2026&Listagem=OrdemPagto_Detalhes_PorNumeroEmpenho&intNumeroEmpenho=1&strTipoEmpenho=OR&Empresa=1&strNumeroPagto=1 
+Ordem Pagto Parcelas Por Número de Empenho
+GET
+/VersaoJson/Despesas/?ConectarExercicio={ConectarExercicio}&Listagem=OrdemPagto_Parcelas_PorNumeroEmpenho&intNumeroEmpenho={NumeroEmpenho}&strTipoEmpenho={TipoEmpenho}&Empresa={Entidade}&strNumeroPagto={NumeroPagto}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/VersaoJson/Despesas/?ConectarExercicio=2026&Listagem=OrdemPagto_Parcelas_PorNumeroEmpenho&intNumeroEmpenho=1&strTipoEmpenho=OR&Empresa=1&strNumeroPagto=1 
+Ordem Pagto Cheques Por Número de Empenho
+GET
+/VersaoJson/Despesas/?ConectarExercicio={ConectarExercicio}&Listagem=OrdemPagto_Cheques_PorNumeroEmpenho&intNumeroEmpenho={NumeroEmpenho}&strTipoEmpenho={TipoEmpenho}&Empresa={Entidade}&strNumeroPagto={NumeroPagto}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/VersaoJson/Despesas/?ConectarExercicio=2026&Listagem=OrdemPagto_Cheques_PorNumeroEmpenho&intNumeroEmpenho=1&strTipoEmpenho=OR&Empresa=1&strNumeroPagto=1 
+Notas Fiscais da Liquidação Por Número de Empenho
+GET
+/VersaoJson/Despesas/?ConectarExercicio={ConectarExercicio}&Listagem=NotasEmpenhoLiquidacao_PorNumeroEmpenho&intNumeroEmpenho={NumeroEmpenho}&strTipoEmpenho={TipoEmpenho}&Empresa={Entidade}&strNumeroLiquidacao={NumeroLiquidacao}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/VersaoJson/Despesas/?ConectarExercicio=2026&Listagem=NotasEmpenhoLiquidacao_PorNumeroEmpenho&intNumeroEmpenho=1&strTipoEmpenho=OR&Empresa=1&strNumeroLiquidacao=1 
+Diárias
+GET
+/VersaoJson/Despesas/?ConectarExercicio={ConectarExercicio}&Listagem=Diarias&DiaInicioPeriodo={diaInicio}&MesInicialPeriodo={MesInicio}&DiaFinalPeriodo={DiaFinal}&MesFinalPeriodo={MesFinal}&Ano={AnoPeriodo}&Empresa={Entidade}&MostraDadosConsolidado={MostrarDadosTodasEntidades}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/VersaoJson/Despesas/?ConectarExercicio=2026&Listagem=Diarias&DiaInicioPeriodo=01&MesInicialPeriodo=01&DiaFinalPeriodo=31&MesFinalPeriodo=12&Ano=2026&Empresa=1&MostraDadosConsolidado=False 
+Despesas por Restos a Pagar
+GET
+/VersaoJson/Despesas/?ConectarExercicio={ConectarExercicio}&Listagem=DespesasRestosPagar&DiaInicioPeriodo={diaInicio}&MesInicialPeriodo={MesInicio}&DiaFinalPeriodo={DiaFinal}&MesFinalPeriodo={MesFinal}&Ano={AnoPeriodo}&Empresa={Entidade}&ApresentaNomeFavorecido={ApresentaNomeFavorecido}&MostraDadosConsolidado={MostrarDadosTodasEntidades}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/versaoJson/Despesas/?ConectarExercicio=2026&Listagem=DespesasRestosPagar&DiaInicioPeriodo=01&MesInicialPeriodo=01&DiaFinalPeriodo=31&MesFinalPeriodo=12&Ano=2026&Empresa=1&ApresentaNomeFavorecido=True&MostraDadosConsolidado=False 
+Despesas Extra Orçamentárias
+GET
+/VersaoJson/Despesas/?ConectarExercicio={ConectarExercicio}&Listagem=DespesasExtraOrcamentaria&DiaInicioPeriodo={diaInicio}&MesInicialPeriodo={MesInicio}&DiaFinalPeriodo={DiaFinal}&MesFinalPeriodo={MesFinal}&Ano={AnoPeriodo}&Empresa={Entidade}&ApresentaNomeFavorecido={ApresentaNomeFavorecido}&MostraDadosConsolidado={MostrarDadosTodasEntidades}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/versaoJson/Despesas/?ConectarExercicio=2026Listagem=DespesasExtraOrcamentaria&DiaInicioPeriodo=01&MesInicialPeriodo=01&DiaFinalPeriodo=31&MesFinalPeriodo=12&Ano=2026&Empresa=1&ApresentaNomeFavorecido=True&MostraDadosConsolidado=False 
+Despesas por Exigibilidade (Ordem Cronológica)
+GET
+/VersaoJson/Despesas/?ConectarExercicio={ConectarExercicio}&Listagem=DespesasporExigibilidade&DiaInicioPeriodo={diaInicio}&DiaFinalPeriodo={DiaFinal}&strTipoLista={TipoLista}&Empresa={Entidade}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/versaoJson/Despesas/?ConectarExercicio=2026&Listagem=DespesasporExigibilidade&DiaInicioPeriodo=01.01.2026&DiaFinalPeriodo=31.12.2026&strTipoLista=1&Empresa=1 
+Receitas
+Receita Orçamentária
+GET
+/VersaoJson/Receitas/?ConectarExercicio={ConectarExercicio}&Listagem=ReceitaOrcamentaria&DiaInicioPeriodo={diaInicio}&MesInicialPeriodo={MesInicio}&DiaFinalPeriodo={diaFinal}&MesFinalPeriodo={MesFinal}&Ano={AnoPeriodo}&Empresa={Entidade}&MostraDadosConsolidado={MostrarDadosTodasEntidades}&CodigoReceita={Código da Receita (Opcional)}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/VersaoJson/Receitas/?ConectarExercicio=2026&Listagem=ReceitaOrcamentaria&DiaInicioPeriodo=01&MesInicialPeriodo=01&DiaFinalPeriodo=31&MesFinalPeriodo=12&Ano=2026&Empresa=1&MostraDadosConsolidado=False 
+Receita União
+GET
+/VersaoJson/Receitas/?ConectarExercicio={ConectarExercicio}&Listagem=ReceitaUniao&DiaInicioPeriodo={diaInicio}&MesInicialPeriodo={MesInicio}&DiaFinalPeriodo={diaFinal}&MesFinalPeriodo={MesFinal}&Ano={AnoPeriodo}&Empresa={Entidade}&MostraDadosConsolidado={MostrarDadosTodasEntidades}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/VersaoJson/Receitas/?ConectarExercicio=2026&Listagem=ReceitaUniao&DiaInicioPeriodo=01&MesInicialPeriodo=01&DiaFinalPeriodo=31&MesFinalPeriodo=12&Ano=2026&Empresa=1&MostraDadosConsolidado=False 
+Receita Estado
+GET
+/VersaoJson/Receitas/?ConectarExercicio={ConectarExercicio}&Listagem=ReceitaEstado&DiaInicioPeriodo={diaInicio}&MesInicialPeriodo={MesInicio}&DiaFinalPeriodo={diaFinal}&MesFinalPeriodo={MesFinal}&Ano={AnoPeriodo}&Empresa={Entidade}&MostraDadosConsolidado={MostrarDadosTodasEntidades}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/VersaoJson/Receitas/?ConectarExercicio=2026&Listagem=ReceitaEstado&DiaInicioPeriodo=01&MesInicialPeriodo=01&DiaFinalPeriodo=31&MesFinalPeriodo=12&Ano=2026&Empresa=1&MostraDadosConsolidado=False 
+Receita Extra Orçamentária
+GET
+/VersaoJson/Receitas/?ConectarExercicio={ConectarExercicio}&Listagem=ReceitaExtraOrcamentaria&DiaInicioPeriodo={diaInicio}&MesInicialPeriodo={MesInicio}&DiaFinalPeriodo={diaFinal}&MesFinalPeriodo={MesFinal}&Ano={AnoPeriodo}&Empresa={Entidade}&MostraDadosConsolidado={MostrarDadosTodasEntidades}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/VersaoJson/Receitas/?ConectarExercicio=2026&Listagem=ReceitaExtraOrcamentaria&DiaInicioPeriodo=01&MesInicialPeriodo=01&DiaFinalPeriodo=31&MesFinalPeriodo=12&Ano=2026&Empresa=1&MostraDadosConsolidado=False 
+Detalhes das Receitas Orçamentaria
+GET
+/VersaoJson/Receitas/?ConectarExercicio={ConectarExercicio}&Listagem=DetalhesReceitaOrcamentaria&DiaInicioPeriodo={diaInicio}&MesInicialPeriodo={MesInicio}&DiaFinalPeriodo={diaFinal}&MesFinalPeriodo={MesFinal}&Ano={AnoPeriodo}&Empresa={Entidade}&Codigochave={CodigoDaReceita}MostraDadosConsolidado={MostrarDadosTodasEntidades}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/VersaoJson/Receitas/?ConectarExercicio=2026&Listagem=DetalhesReceitaOrcamentaria&DiaInicioPeriodo=01&MesInicialPeriodo=01&DiaFinalPeriodo=15&MesFinalPeriodo=01&Ano=2026&Empresa=1&Codigochave=1112.50.0.1&MostraDadosConsolidado=False 
+Licitações e Contratos
+Licitações
+GET
+/VersaoJson/LicitacoesEContratos/?ConectarExercicio={ConectarExercicio}&Listagem=Licitacoes&Ano={AnoPeriodo}&Empresa={Entidade}&MostraDadosConsolidado={MostrarDadosTodasEntidades}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/VersaoJson/LicitacoesEContratos/?ConectarExercicio=2026&Listagem=Licitacoes&Ano=2026&Empresa=1&MostraDadosConsolidado=False 
+Contratos
+GET
+/VersaoJson/LicitacoesEContratos/?ConectarExercicio={ConectarExercicio}&Listagem=Contratos&Ano={AnoPeriodo}&Empresa={Entidade}&MostraDadosConsolidado={MostrarDadosTodasEntidades}&ContratosApenasPublicados={MostrarApenasPublicados}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/VersaoJson/LicitacoesEContratos/?ConectarExercicio=2026&Listagem=Contratos&Ano=2026&Empresa=1&MostraDadosConsolidado=False&ContratosApenasPublicados=False 
+Transferências
+Transferências entre Entidades
+GET
+/VersaoJson/Transferencias/?ConectarExercicio={ConectarExercicio}&Listagem=Transf&Empresa={Entidade}&MostraDadosConsolidado={MostrarDadosTodasEntidades}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/VersaoJson/Transferencias/?ConectarExercicio=2026&Listagem=Transf&Empresa=1&MostraDadosConsolidado=False 
+Emendas Impositivas (art. 166-A da CF) - Buscando dos Empenhos e das Receitas com base no código STN
+GET
+/VersaoJson/Transferencias/?ConectarExercicio={ConectarExercicio}&Listagem=EmendasImpositivasArt166A&Empresa={Entidade}&MostraDadosConsolidado={MostrarDadosTodasEntidades}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/VersaoJson/Transferencias/?ConectarExercicio=2026&Listagem=EmendasImpositivasArt166A&Empresa=1&MostraDadosConsolidado=False 
+Emendas Impositivas (art. 166-A da CF) - Buscando do Cadastro das Emendas
+GET
+/VersaoJson/Transferencias/?ConectarExercicio={ConectarExercicio}&Listagem=CadEmendasImpositivas&Empresa={Entidade}&MostraDadosConsolidado={MostrarDadosTodasEntidades}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/VersaoJson/Transferencias/?ConectarExercicio=2026&Listagem=CadEmendasImpositivas&Empresa=1&MostraDadosConsolidado=False 
+Pessoal
+Servidores
+GET
+/VersaoJson//Pessoal/?ConectarExercicio={ConectarExercicio}&Listagem=Servidores&Empresa={Entidade}&Ano={AnoPeriodo}&MesFinalPeriodo={MesFinal}
+Ex: http://siteDaEntidade.uf.gov.br/Transparencia/VersaoJson/Pessoal/?ConectarExercicio=2026&Listagem=Servidores&Empresa=1&Ano=2026&MesFinalPeriodo=01 

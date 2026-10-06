@@ -1,0 +1,10 @@
+{
+  "_comentario": "Limites dos alertas de NOVOS registros (valores em reais). Alerta = informação neutra; não indica irregularidade. Edite e faça commit; vale a partir da próxima execução.",
+  "empenho_valor_minimo": { "prefeitura": 1000000, "camara": 100000 },
+  "dispensa_valor_minimo": { "prefeitura": 100000, "camara": 10000 },
+  "contrato_valor_minimo": { "prefeitura": 1000000, "camara": 100000 },
+  "modalidades_destacadas": ["DISPENSA", "INEXIGIBILIDADE"],
+  "ignorar_empenhos_em_nome_do_proprio_ente": true,
+  "ignorar_anulacoes": true,
+  "maximo_no_feed": 300
+}

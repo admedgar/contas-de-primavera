@@ -1,0 +1,2 @@
+# Opcional: só para gerar a imagem de prévia (og.png) no build. O resto do projeto usa apenas a biblioteca padrão do Python.
+pillow>=10.1

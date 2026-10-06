@@ -1,0 +1,6 @@
+# Vínculos entre cadastros de favorecido (codif) e vereadores. REVISADO PELO CLIENTE; nunca preencher "no chute".
+# Colunas (separador ;):  codif ; vereador (nome como na folha, qualquer acento/caixa) ; decisao (confirmar | rejeitar) ; nota
+# O sistema só soma para um vereador os cadastros CONFIRMADOS: pela regra (CPF mascarado idêntico + nome idêntico) ou por uma linha "confirmar" aqui.
+# Cadastros "sugeridos" (nome igual mas documento diferente, etc.) aparecem em Metodologia como pendência e ficam FORA das somas até serem decididos.
+codif;vereador;decisao;nota
+775;Sérgio Rodrigues Gonçalves;confirmar;Confirmado pelo responsável do projeto em 06/10/2026: mesmo nome, cadastro com CNPJ 14.780.772/0001-06
