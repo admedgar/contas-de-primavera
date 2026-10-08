@@ -100,6 +100,7 @@ class Alertas(Base):
         itens = alr.itens_publicados(self.conn, CFG)
         t = itens[0]["texto"]
         self.assertIn("R$ 1.500.000,00", t); self.assertIn("Fonte: portal oficial", t)
+        self.assertIn("registro de 05/10/2026", t)                 # a data vem do banco no campo data_registro
         raiz = ET.fromstring(alr.feed_atom(itens, "https://exemplo.org"))
         self.assertEqual(len(raiz.findall("{http://www.w3.org/2005/Atom}entry")), 1)
 

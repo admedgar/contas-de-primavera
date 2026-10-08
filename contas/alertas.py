@@ -139,7 +139,7 @@ def texto(a: dict) -> str:
     quem = a.get("fornecedor") or "—"
     tipo = "novo contrato" if a["tipo"] == "contrato" else "novo empenho"
     motivos = a["motivos"] if isinstance(a["motivos"], list) else str(a["motivos"]).split(";")
-    return (f"{NOME_ENT[a['entidade']]} · {tipo} de {_reais(a['valor'])} · {quem} · registro de {_dt(a.get('data'))} · "
+    return (f"{NOME_ENT[a['entidade']]} · {tipo} de {_reais(a['valor'])} · {quem} · registro de {_dt(a.get('data') or a.get('data_registro'))} · "
             f"critério: {'; '.join(ROT_MOTIVO.get(m, m) for m in motivos)}. Fonte: portal oficial.")
 
 
