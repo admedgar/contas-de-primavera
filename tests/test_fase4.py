@@ -206,3 +206,44 @@ class Retentativa(Base):
         self.assertEqual(rc, 2)
         self.assertEqual(sum(1 for (_, _, f) in ch if f), 2)               # duas recoletas e então desiste
         self.assertEqual((Path(self.tmp.name) / "data" / "alertas_novos.json").read_text(), "[]")
+
+
+class Defasagem(Base):
+    """O detalhe de empenhos pode ficar atrás dos totais do portal; só vira 'aviso' se fechar ao centavo até a última data."""
+    def _res(self, dif, esperado=1_000_000):
+        return [{"checagem": "empenhado_vs_portal_por_orgao", "status": "divergente", "esperado": esperado, "obtido": esperado + dif, "diferenca": dif, "detalhe": "x"},
+                {"checagem": "por_orgao_confere", "status": "divergente", "esperado": 0, "obtido": 1, "diferenca": 1, "detalhe": "y"}]
+
+    def test_detalhe_fecha_ate_a_data_e_diferenca_pequena_vira_aviso(self):
+        self.emp(100, data="2026-10-06"); self.emp(50, data="2026-10-05")
+        r = self._res(2000)
+        validar.explica_defasagem(self.conn, "prefeitura", 2026, r, lambda *a: {"0206": 15_000})      # totais do portal até 06/10 = soma da lista
+        self.assertEqual([x["status"] for x in r], ["aviso", "aviso"]); self.assertIn("DEFASAGEM", r[0]["detalhe"])
+
+    def test_se_o_detalhe_nao_fecha_ate_a_data_continua_divergente(self):
+        self.emp(100, data="2026-10-06")
+        r = self._res(2000)
+        validar.explica_defasagem(self.conn, "prefeitura", 2026, r, lambda *a: {"0206": 9_999})        # faltam R$ 0,01 já no passado
+        self.assertEqual([x["status"] for x in r], ["divergente", "divergente"])
+
+    def test_diferenca_grande_nao_e_explicada(self):
+        self.emp(100, data="2026-10-06")
+        r = self._res(50_000)                                                                          # 5% do total
+        validar.explica_defasagem(self.conn, "prefeitura", 2026, r, lambda *a: {"0206": 10_000})
+        self.assertEqual(r[0]["status"], "divergente")
+
+
+class Preflight(Base):
+    def test_portal_fora_do_ar_pula_a_coleta_e_registra(self):
+        with mock.patch.object(cli.http, "sonda", return_value=(False, "HTTP 530")), mock.patch.object(cli.time, "sleep"), \
+             mock.patch.object(cli, "coletar", side_effect=AssertionError("não deveria coletar")), mock.patch.object(config, "RAIZ", Path(self.tmp.name)), \
+             mock.patch.object(cli.pub, "publicar"), mock.patch.object(cli.alr, "publicar_alertas"), mock.patch.object(cli.alr, "registrar_novos", return_value=[]):
+            rc = cli.diario(self.conn, ["prefeitura", "camara"])
+        self.assertEqual(rc & 1, 1)
+        r = self.conn.execute("SELECT status, mensagem FROM execucao_coleta WHERE fonte='portal_no_ar'").fetchall()
+        self.assertEqual(len(r), 2); self.assertIn("530", r[0]["mensagem"])
+
+    def test_agendamento_em_horario_comercial_com_segunda_chance(self):
+        y = (config.RAIZ / ".github" / "workflows" / "diario.yml").read_text(encoding="utf-8")
+        self.assertIn('cron: "17 15 * * *"', y); self.assertIn('cron: "17 21 * * *"', y)
+        self.assertIn("needs: decidir", y); self.assertIn("rodar == 'true'", y)

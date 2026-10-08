@@ -122,3 +122,12 @@ def coletar_totais_portal(conn, entidade: str, ano: int):
         for origem, L, d in (("por_orgao", orgaos, dot), ("por_fornecedor", forn, None)):
             conn.execute("INSERT OR REPLACE INTO total_portal VALUES (?,?,?,?,?,?,?,?)",
                          (entidade, ano, origem, soma(L, "EMPENHADO"), soma(L, "LIQUIDADO"), soma(L, "PAGO"), d, agora))
+
+
+def totais_orgao_ate(entidade: str, ano: int, data_iso: str) -> dict:
+    """Empenhado por órgão de 1º/jan até a data (consulta de totais do portal). Usado para provar que o detalhe está completo até a data."""
+    d = date.fromisoformat(data_iso)
+    p = {"ConectarExercicio": ano, "Listagem": "DespesasPorOrgao", "DiaInicioPeriodo": "01", "MesInicialPeriodo": "01",
+         "DiaFinalPeriodo": f"{d.day:02d}", "MesFinalPeriodo": f"{d.month:02d}", "Ano": ano, "Empresa": 1, "MostraDadosConsolidado": "False"}
+    linhas, _, _ = http.get_json(entidade, "Despesas", p)
+    return {r["CODIGO"]: centavos(r["EMPENHADO"]) for r in linhas}

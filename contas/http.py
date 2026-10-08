@@ -109,3 +109,16 @@ def get_json_externo(url: str):
             corpo = r.read()
             return gzip.decompress(corpo) if r.headers.get("Content-Encoding") == "gzip" else corpo
     return _decodifica(_com_retry(chamada, url), url)
+
+
+def sonda(entidade: str, timeout: int = 30):
+    """Uma única requisição leve (página de documentação do portal) para saber se o portal está no ar. -> (ok, detalhe)."""
+    url = f"{config.BASE_URL}/{config.ENTIDADES[entidade]['portal']}/versaoJson/DadosAbertos/"
+    try:
+        _pausa()
+        with _abrir(url) as r:
+            return (200 <= r.status < 300), f"HTTP {r.status}"
+    except urllib.error.HTTPError as e:
+        return False, f"HTTP {e.code}"
+    except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+        return False, str(e)[:120]

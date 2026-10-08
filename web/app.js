@@ -409,7 +409,7 @@ async function paginaMetodologia() {
         val.filter((v) => v.exercicio === a).map((v) => `<tr><td>${esc(v.checagem.replace(/_/g, " "))}<br><span class="hist">${esc(v.detalhe)}</span></td><td class="${cls[v.status]}">${rot[v.status]}</td><td class="n">${fmt(v, v.esperado)}</td><td class="n">${fmt(v, v.obtido)}</td><td class="n">${fmt(v, v.diferenca)}</td></tr>`).join("") + `</tbody></table></div>`).join("");
   }
   const vb = await carregar("camara/verba.json");
-  let atualizacaoHtml = `<h3>Atualização automática e alertas</h3><ul class="limpo"><li>Os dados são coletados <strong>uma vez por dia</strong>, de madrugada (horário de Cuiabá), para não sobrecarregar o portal. Antes de publicar, o sistema confere os totais; se algo não bater, a atualização é suspensa e o site continua com a última versão conferida.</li>
+  let atualizacaoHtml = `<h3>Atualização automática e alertas</h3><ul class="limpo"><li>Os dados são coletados <strong>uma vez por dia</strong>, no fim da manhã (horário de Cuiabá; o portal costuma ficar fora do ar de madrugada), com uma segunda tentativa à tarde se a primeira falhar. Antes de publicar, o sistema confere os totais; se algo não bater, a atualização é suspensa e o site continua com a última versão conferida.</li>
     <li>Se o portal mudar de formato ou ficar fora do ar, a coleta daquela fonte falha sem apagar o que já havia, e uma faixa de aviso aparece no topo do site.</li>
     <li><a href="#/novidades">Novidades</a> lista registros novos acima de limites de valor, ou contratados por dispensa/inexigibilidade, com os critérios à vista. Não indica irregularidade.</li></ul>`;
   try {

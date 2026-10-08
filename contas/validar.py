@@ -16,7 +16,7 @@ def _res(checagem, esperado, obtido, detalhe="", tolera_aviso=False):
     return {"checagem": checagem, "status": status, "esperado": esperado, "obtido": obtido, "diferenca": dif, "detalhe": detalhe}
 
 
-def validar(conn, entidade: str, ano: int) -> list:
+def validar(conn, entidade: str, ano: int, ate_data=None) -> list:
     q1 = lambda sql, *a: conn.execute(sql, a).fetchone()
     out = []
     soma = q1("SELECT COALESCE(SUM(empenhado),0) e, COALESCE(SUM(liquidado),0) l, COALESCE(SUM(pago),0) p, COUNT(*) n "
@@ -76,6 +76,8 @@ def validar(conn, entidade: str, ano: int) -> list:
     if entidade == "prefeitura":
         out += checagens_receitas(conn, ano)
     aplica_conhecidas(entidade, ano, out)
+    if ate_data is not None:
+        explica_defasagem(conn, entidade, ano, out, ate_data)
     agora = db.agora()
     conn.execute("DELETE FROM validacao WHERE entidade=? AND exercicio=?", (entidade, ano))
     conn.executemany("INSERT INTO validacao VALUES (?,?,?,?,?,?,?,?,?)",
@@ -101,6 +103,34 @@ def aplica_conhecidas(entidade: str, ano: int, resultados: list, lista: list = N
             if r["checagem"] == c["checagem"] and r["status"] == "divergente" and r["diferenca"] == c["diferenca"]:
                 r["status"] = "aviso"
                 r["detalhe"] = f"{r['detalhe']} [DIVERGÊNCIA CONHECIDA DA FONTE: {c['nota']}]"
+
+
+TOLERANCIA_DEFASAGEM = 0.005     # 0,5% do total
+
+
+def explica_defasagem(conn, entidade: str, ano: int, out: list, ate_data):
+    """O portal é um sistema vivo e a lista detalhada de empenhos pode ficar algumas horas atrás dos totais. Quando a soma dos empenhos
+    diverge dos totais, mas o detalhe FECHA AO CENTAVO, órgão por órgão, até a data do último empenho da lista, e a diferença é pequena
+    (até 0,5%), ela vem de lançamentos mais novos que ainda não constam do detalhe: vira 'aviso' (explicado). Caso contrário, continua divergente.
+    ate_data(entidade, ano, 'AAAA-MM-DD') -> {órgão: empenhado em centavos até a data}."""
+    alvo = [r for r in out if r["status"] == "divergente" and (r["checagem"].endswith(("_vs_portal_por_orgao", "_vs_portal_por_fornecedor")) or r["checagem"] == "por_orgao_confere")]
+    if not alvo:
+        return
+    d = conn.execute("SELECT MAX(data) FROM empenho WHERE entidade=? AND exercicio=?", (entidade, ano)).fetchone()[0]
+    if not d:
+        return
+    portal = ate_data(entidade, ano, d)
+    lista = {r["orgao"]: r["s"] for r in conn.execute("SELECT orgao, SUM(empenhado) s FROM empenho WHERE entidade=? AND exercicio=? AND data<=? GROUP BY orgao", (entidade, ano, d))}
+    if any(portal.get(o, 0) != lista.get(o, 0) for o in set(portal) | set(lista)):
+        return                                                    # o detalhe NÃO fecha até a data: divergência real, mantém
+    numericas = [r for r in alvo if r["checagem"] != "por_orgao_confere"]
+    pequenas = all(r["esperado"] and abs(r["diferenca"]) <= TOLERANCIA_DEFASAGEM * abs(r["esperado"]) for r in numericas)
+    if not pequenas:
+        return
+    dd = f"{d[8:10]}/{d[5:7]}/{d[:4]}"
+    for r in alvo:
+        r["status"] = "aviso"
+        r["detalhe"] += f" [DEFASAGEM DO PORTAL: o detalhe de empenhos fecha ao centavo, por órgão, com os totais do portal até {dd}; a diferença (até 0,5%) vem de lançamentos mais novos que ainda não constam da lista]"
 
 
 def resumo(resultados: list) -> tuple:

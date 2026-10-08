@@ -19,7 +19,7 @@ import sys
 import time
 from datetime import date
 
-from . import alertas as alr, config, db, publicar as pub, publicar_camara as pubc, publicar_receitas as pubr, validar as val
+from . import alertas as alr, config, db, http, publicar as pub, publicar_camara as pubc, publicar_receitas as pubr, validar as val
 from .coleta import camara as cam, despesas, entradas, ibge, licitacoes, mensal, pessoal, receitas, siconfi, vinculos
 
 FONTES_ANO = {
@@ -106,12 +106,14 @@ def fontes_fechadas(entidade: str) -> list:      # a receita do portal só exist
     return ["despesas", "totais", "mensal"] + (["folha", "diarias", "transferencias"] if entidade == "camara" else [])
 
 
+TENTATIVAS_SONDA = 3
+ESPERA_SONDA_S = 30
 TENTATIVAS_CONFERENCIA = 2
 ESPERA_ENTRE_TENTATIVAS_S = 60
 
 
 def _validar_e_imprimir(conn, ent, ano) -> int:
-    res = val.validar(conn, ent, ano)
+    res = val.validar(conn, ent, ano, ate_data=despesas.totais_orgao_ate if ano == date.today().year else None)
     n, div, avs = val.resumo(res)
     print(f"[validação {ent} {ano}] {n} checagens: {n - div - avs} ok, {avs} avisos, {div} divergências")
     for r in res:
@@ -120,11 +122,34 @@ def _validar_e_imprimir(conn, ent, ano) -> int:
     return div
 
 
+def portal_no_ar(conn, ent) -> bool:
+    """Sondagem antes de coletar: se o portal está fora do ar (ex.: HTTP 530 de madrugada), não gasta ~30 min em tentativas por fonte.
+    Registra a falha em execucao_coleta (aparece na faixa de aviso e na Metodologia)."""
+    detalhe = ""
+    for i in range(TENTATIVAS_SONDA):
+        ok, detalhe = http.sonda(ent)
+        if ok:
+            return True
+        logging.warning("portal %s fora do ar (%s); tentativa %d/%d", ent, detalhe, i + 1, TENTATIVAS_SONDA)
+        if i + 1 < TENTATIVAS_SONDA:
+            time.sleep(ESPERA_SONDA_S)
+    try:
+        with db.coleta(conn, ent, "portal_no_ar") as info:
+            raise http.FonteIndisponivel(f"portal indisponível ({detalhe}); nada foi coletado nesta execução")
+    except http.FonteIndisponivel:
+        pass
+    return False
+
+
 def diario(conn, entidades, completo=False, force=False) -> int:
     rc = 0
     ibge_feito = False
     todas = list(FONTES_ANO) + list(FONTES_ENTIDADE) + list(FONTES_ENTIDADE_PREFEITURA) + list(FONTES_ANO_CAMARA)
     for ent in entidades:
+        if not portal_no_ar(conn, ent):
+            rc |= 1
+            print(f"[{ent}] portal fora do ar: coleta pulada; o site segue com a última versão (nova tentativa no próximo agendamento).")
+            continue
         plano = plano_diario(conn, ent, completo=completo)
         logging.info("plano %s: %s", ent, plano)
         if plano["fechados"]:
@@ -222,13 +247,7 @@ def main(argv=None) -> int:
             derivar(conn, anos)
         if a.comando == "validar":
             for ano in anos:
-                res = val.validar(conn, ent, ano)
-                n, div, avs = val.resumo(res)
-                print(f"[validação {ent} {ano}] {n} checagens: {n - div - avs} ok, {avs} avisos, {div} divergências")
-                for r in res:
-                    if r["status"] != "ok":
-                        print(f"   {r['status'].upper():10s} {r['checagem']}: esperado={r['esperado']} obtido={r['obtido']} dif={r['diferenca']}  {r['detalhe'][:200]}")
-                rc |= 2 if div else 0
+                rc |= 2 if _validar_e_imprimir(conn, ent, ano) else 0
         if a.comando == "publicar":
             pub.publicar(conn, ent)
             if ent == "camara":

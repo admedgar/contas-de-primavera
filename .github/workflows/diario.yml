@@ -3,7 +3,9 @@
 name: Atualização diária
 on:
   schedule:
-    - cron: "17 7 * * *"          # 07:17 UTC = 03:17 em Cuiabá (horário de baixo uso do portal)
+    # O portal da prefeitura sai do ar de madrugada (respondeu HTTP 530 às 03:30 em dois dias seguidos), então a coleta roda em horário comercial.
+    - cron: "17 15 * * *"         # 15:17 UTC = 11:17 em Cuiabá
+    - cron: "17 21 * * *"         # segunda chance, 17:17 em Cuiabá: só roda se não houve atualização bem-sucedida nas últimas 10 horas
   workflow_dispatch:
     inputs:
       completo:
@@ -21,7 +23,28 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  decidir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      rodar: ${{ steps.d.outputs.rodar }}
+    steps:
+      - id: d
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then echo "rodar=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          n=$(gh run list --workflow diario.yml --status success --limit 10 --json createdAt --jq '[.[] | select((.createdAt | fromdateiso8601) > (now - 36000))] | length')
+          echo "execuções bem-sucedidas nas últimas 10 h: $n"
+          if [ "$n" = "0" ]; then echo "rodar=true" >> "$GITHUB_OUTPUT"; else echo "rodar=false" >> "$GITHUB_OUTPUT"; fi
+
   atualizar:
+    needs: decidir
+    if: needs.decidir.outputs.rodar == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 120
     environment:
