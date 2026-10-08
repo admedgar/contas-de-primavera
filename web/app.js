@@ -8,7 +8,7 @@ const MEDIDAS = { empenhado: "Empenhado", liquidado: "Liquidado", pago: "Pago" }
 const K = { empenhado: "e", liquidado: "l", pago: "p" };
 const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 const SECOES = [
-  ["resumo", "Resumo"], ["mensal", "Mês a mês"], ["secretarias", "Secretarias"], ["funcoes", "Funções e elementos"],
+  ["resumo", "Resumo"], ["receitas", "Receitas (entradas)"], ["mensal", "Mês a mês"], ["secretarias", "Secretarias"], ["funcoes", "Funções e elementos"],
   ["fornecedores", "Fornecedores"], ["empenhos", "Empenhos"], ["licitacoes", "Licitações e contratos"],
   ["receita", "Receita × despesa"], ["folha", "Folha (agregada)"],
 ];
@@ -364,7 +364,7 @@ async function usaEntidade(ent) {
 async function paginaEntidade(ent, sec, extra) {
   await usaEntidade(ent);
   const lista = ent === "camara" ? SECOES_CAM : SECOES;
-  const tabela = ent === "camara" ? Object.assign({}, SEC, SEC_CAM) : SEC;
+  const tabela = ent === "camara" ? Object.assign({}, SEC, SEC_CAM) : Object.assign({}, SEC, SEC_REC);
   const s = lista.find((x) => x[0] === sec) ? sec : "resumo";
   $("#pagina").innerHTML = `<nav class="subnav" aria-label="Seções ${NOME_ENT[ent]}">${lista.map(([k, n]) => `<a href="#/${ent}/${k}" ${k === s ? 'aria-current="true"' : ""}>${n}</a>`).join("")}</nav><section id="secao" aria-live="polite"></section>`;
   try { await tabela[s]($("#secao"), extra); }
@@ -385,7 +385,11 @@ function paginaEntenda() {
       <dt><strong>Verba indenizatória (Câmara)</strong></dt><dd>Valor mensal pago a cada vereador para ressarcir despesas ligadas ao exercício do mandato, nos termos da lei municipal. O portal de dados informa o <em>valor recebido</em> por vereador; como cada vereador gastou a verba consta em relatórios mensais da Câmara, que ainda não estão neste site.</dd>
       <dt><strong>Diária</strong></dt><dd>Valor pago para cobrir despesas de viagem a serviço (hospedagem, alimentação e locomoção).</dd>
       <dt><strong>Vereador suplente</strong></dt><dd>Pessoa que exerce o mandato quando o titular está afastado. Na folha, aparece com cargo “Vereador suplente”.</dd>
-      <dt><strong>Receita líquida</strong></dt><dd>Receitas correntes e de capital arrecadadas, menos as deduções (como a parte destinada ao Fundeb).</dd></dl></div>`;
+      <dt><strong>Receita bruta, deduções e receita líquida</strong></dt><dd>Receita bruta é tudo que foi arrecadado (receitas correntes e de capital). Deduções são parcelas que não ficam com a Prefeitura, como a contribuição ao Fundeb. Receita líquida = bruta − deduções.</dd>
+      <dt><strong>Arrecadação própria e transferências</strong></dt><dd>Arrecadação própria vem de impostos, taxas e outras fontes do próprio município (IPTU, ITBI, ISS, taxas, rendimentos). Transferências são repasses de outros entes: da União (ex.: FPM, SUS, FNDE), dos Estados (ex.: parte do ICMS e do IPVA) e de fundos (ex.: Fundeb).</dd>
+      <dt><strong>FPM, cota-parte do ICMS e Fundeb</strong></dt><dd>FPM é o Fundo de Participação dos Municípios, repassado pela União. A cota-parte do ICMS é a fatia do imposto estadual que cabe ao município. O Fundeb é o fundo da educação básica: o município contribui com parte da receita e recebe de volta conforme o número de alunos.</dd>
+      <dt><strong>Ingresso extraorçamentário</strong></dt><dd>Dinheiro que passa pelo caixa mas pertence a terceiros (descontos retidos de servidores, tributos retidos, cauções). Não é receita da Prefeitura e não entra nos totais do site.</dd>
+      <dt><strong>SICONFI, DCA e RREO</strong></dt><dd>SICONFI é o sistema do Tesouro Nacional onde as prefeituras declaram suas contas. A DCA é a declaração anual; o RREO é o relatório bimestral de execução orçamentária. O site usa esses demonstrativos para comparar a receita entre anos, porque o portal da Prefeitura só informa a receita do ano corrente.</dd></dl></div>`;
 }
 
 const CONTA_QTD = /orgaos|sem_|confere|carregad|pendentes|vereador|vinculado/;
@@ -422,6 +426,8 @@ async function paginaMetodologia() {
      <li><strong>Mês a mês</strong>: consultas mensais do portal. O empenhado é do mês; para secretarias, liquidado e pago do mês são a diferença entre acumulados consecutivos informados pelo portal.</li>
      <li><strong>Contador (estimativa)</strong>: taxa = total do ano na última coleta ÷ segundos desde 1º de janeiro (horário de Cuiabá). O contador soma essa taxa ao valor coletado a partir do momento da coleta e para após 3 dias sem atualização. Não é um dado oficial.</li>
      <li><strong>Por habitante</strong>: total ÷ população estimada do IBGE para o ano (${Object.entries(meta.populacao).map(([a, p]) => `${a}: ${NUM.format(p.habitantes)}`).join("; ")}). <strong>Por dia</strong>: total ÷ dias decorridos do ano até a coleta.</li>
+     <li><strong>Receitas (entradas) do portal</strong>: árvore de classificação oficial (categoria → origem → espécie → subespécie → rubrica). Cada nível é conferido contra a soma dos seus filhos; o nível mais detalhado do portal só repete as rubricas divididas por vinculação e não é somado. “Arrecadação própria” = receita bruta − transferências (origens 1700 e 2400). O portal só informa a arrecadação do exercício corrente.</li>
+     <li><strong>Receita ano a ano e mesmo período</strong>: vêm do SICONFI (Tesouro Nacional): DCA para anos fechados e RREO para o mesmo bimestre em quatro anos. As linhas do RREO já vêm líquidas do Fundeb e o consolidado inclui o regime próprio de previdência, por isso <strong>não são comparadas nem somadas com o portal</strong>. Variações acima de +100% ou abaixo de −50% recebem um alerta porque podem refletir mudança de classificação contábil. Valores nominais, sem correção pela inflação.</li>
      <li><strong>Receita líquida</strong>: soma das linhas de totalização do portal (receitas correntes + receitas de capital − deduções). A árvore completa tem códigos repetidos e não pode ser somada.</li>
      <li><strong>Folha</strong>: agregados por cargo, setor e vínculo, sem nomes; grupos com menos de 3 servidores ficam em “Outros”. <em>Exceção:</em> os vereadores (cargo que começa com “Vereador”, incluindo suplentes) aparecem com nome, como agentes políticos.</li>
      <li><strong>Custo da Câmara</strong>: despesa da Câmara (empenhado, liquidado ou pago) ÷ população; e ÷ receita corrente arrecadada da Prefeitura no mesmo ano. O repasse (duodécimo) vem da consulta de transferências da Prefeitura, que registra os dois sentidos (repasse e devolução).</li>

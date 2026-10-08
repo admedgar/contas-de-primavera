@@ -19,20 +19,25 @@ import sys
 import time
 from datetime import date
 
-from . import alertas as alr, config, db, publicar as pub, publicar_camara as pubc, validar as val
-from .coleta import camara as cam, despesas, ibge, licitacoes, mensal, pessoal, receitas, vinculos
+from . import alertas as alr, config, db, publicar as pub, publicar_camara as pubc, publicar_receitas as pubr, validar as val
+from .coleta import camara as cam, despesas, entradas, ibge, licitacoes, mensal, pessoal, receitas, siconfi, vinculos
 
 FONTES_ANO = {
     "despesas": lambda c, e, a, f: despesas.coletar_empenhos(c, e, a, force=f),
     "totais": lambda c, e, a, f: despesas.coletar_totais_portal(c, e, a),
     "mensal": lambda c, e, a, f: mensal.coletar_mensal(c, e, a),
     "receitas": lambda c, e, a, f: receitas.coletar_receitas(c, e, a),
+    "extra": lambda c, e, a, f: entradas.coletar_extra(c, e, a) if e == "prefeitura" else None,
 }
 FONTES_ENTIDADE = {   # não dependem do ano de referência (portal devolve vários exercícios / mês mais recente)
     "licitacoes": licitacoes.coletar_licitacoes,
     "contratos": licitacoes.coletar_contratos,
 }
-FONTES_ENTIDADE_PREFEITURA = {"folha": pessoal.coletar_folha}      # Prefeitura: só o mês mais recente, agregado
+FONTES_ENTIDADE_PREFEITURA = {                                      # Prefeitura
+    "folha": pessoal.coletar_folha,                                 # só o mês mais recente, agregado
+    "emendas": entradas.coletar_emendas,
+    "siconfi": siconfi.coletar_siconfi,                             # DCA/RREO do Tesouro Nacional (muda pouco: semanal)
+}
 FONTES_ANO_CAMARA = {                                              # Câmara: folha mês a mês (vereadores nominais), diárias, repasses
     "folha": lambda c, e, a, f: cam.coletar_folha_camara(c, e, a),
     "diarias": lambda c, e, a, f: cam.coletar_diarias(c, e, a),
@@ -90,8 +95,15 @@ def plano_diario(conn, entidade: str, hoje: date = None, completo: bool = False)
     return {"corrente": [hoje.year], "fechados": sorted(set(revisar) | set(faltando)), "faltando": faltando}
 
 
-def fontes_fechadas(entidade: str) -> list:
-    return ["despesas", "totais", "mensal", "receitas"] + (["folha", "diarias", "transferencias"] if entidade == "camara" else [])
+def siconfi_devido(conn, hoje: date = None, completo: bool = False) -> bool:
+    """SICONFI só muda quando a prefeitura declara (bimestral/anual): coleta às segundas, com --completo ou se ainda não houver dado."""
+    hoje = hoje or date.today()
+    vazio = conn.execute("SELECT COUNT(*) FROM siconfi_receita").fetchone()[0] == 0
+    return completo or vazio or hoje.weekday() == 0
+
+
+def fontes_fechadas(entidade: str) -> list:      # a receita do portal só existe para o exercício corrente
+    return ["despesas", "totais", "mensal"] + (["folha", "diarias", "transferencias"] if entidade == "camara" else [])
 
 
 TENTATIVAS_CONFERENCIA = 2
@@ -117,7 +129,11 @@ def diario(conn, entidades, completo=False, force=False) -> int:
         logging.info("plano %s: %s", ent, plano)
         if plano["fechados"]:
             rc |= 1 if coletar(conn, ent, plano["fechados"], so=fontes_fechadas(ent), force=force) else 0
-        so = [x for x in todas if x != "ibge"] if ibge_feito else None        # população do IBGE: uma vez por execução
+        so = [x for x in todas if not (x == "siconfi" and not siconfi_devido(conn, completo=completo))]
+        if ibge_feito:
+            so = [x for x in so if x != "ibge"]                               # população do IBGE: uma vez por execução
+        else:
+            so.append("ibge")
         rc |= 1 if coletar(conn, ent, plano["corrente"], so=so, force=force) else 0
         ibge_feito = True
         for ano in sorted(set(plano["corrente"]) | set(plano["fechados"])):
@@ -143,6 +159,8 @@ def diario(conn, entidades, completo=False, force=False) -> int:
             pub.publicar(conn, ent)
             if ent == "camara":
                 print("Câmara:", pubc.publicar_camara(conn))
+            if ent == "prefeitura":
+                print("Receitas:", pubr.publicar_receitas(conn))
         alr.publicar_alertas(conn, url_site=_site().get("url_site"))
         print(f"JSONs publicados em {config.WEB_DATA}; {len(novos_total)} alerta(s) novo(s) nesta execução")
     (config.RAIZ / "data").mkdir(exist_ok=True)
@@ -215,6 +233,8 @@ def main(argv=None) -> int:
             pub.publicar(conn, ent)
             if ent == "camara":
                 print("Câmara:", pubc.publicar_camara(conn))
+            if ent == "prefeitura":
+                print("Receitas:", pubr.publicar_receitas(conn))
             print("JSONs publicados em", config.WEB_DATA)
     return rc
 

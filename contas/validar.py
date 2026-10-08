@@ -3,6 +3,7 @@ próprio portal informa. Divergências são gravadas na tabela `validacao` e mos
 from __future__ import annotations
 
 import json
+from datetime import date
 
 from . import config, db
 
@@ -72,6 +73,8 @@ def validar(conn, entidade: str, ano: int) -> list:
     out.append(_res("orgaos_com_empenhado_negativo", 0, neg, "total negativo indicaria anulação sem o empenho original"))
     if entidade == "camara":
         out += checagens_camara(conn, ano)
+    if entidade == "prefeitura":
+        out += checagens_receitas(conn, ano)
     aplica_conhecidas(entidade, ano, out)
     agora = db.agora()
     conn.execute("DELETE FROM validacao WHERE entidade=? AND exercicio=?", (entidade, ano))
@@ -133,4 +136,36 @@ def checagens_camara(conn, ano: int) -> list:
     rc = q1("SELECT COALESCE(SUM(devolucao),0) FROM transferencia WHERE entidade='camara' AND exercicio=?", ano)[0]
     if rp or rc:
         out.append(_res("repasse_prefeitura_vs_recebido_camara", rp, rc, "repasse informado pela Prefeitura × recebimento informado pela Câmara (a Câmara registra na coluna DEVOLUCAO e pode ter lançado menos meses)", tolera_aviso=True))
+    return out
+
+
+def checagens_receitas(conn, ano: int) -> list:
+    """Receita do portal (exercício corrente): a árvore tem de fechar entre níveis; meses × ano. SICONFI: totais = soma das categorias."""
+    from .publicar_receitas import arvore
+    E, out = "prefeitura", []
+    q1 = lambda sql, *a: conn.execute(sql, a).fetchone()
+    if q1("SELECT COUNT(*) FROM receita WHERE entidade=? AND exercicio=?", E, ano)[0]:
+        nos = arvore([dict(r) for r in conn.execute("SELECT linha, ordem, codigo, arrecadado FROM receita WHERE entidade=? AND exercicio=? ORDER BY linha", (E, ano))])
+        soma, valor = {}, {}
+        for n in nos:
+            valor[n["codigo"] + "|" + str(n["ordem"])] = n["arrecadado"]
+            if n["pai"] is not None:
+                pai = next(x for x in nos if x["codigo"] == n["pai"] and x["ordem"] < n["ordem"])
+                soma.setdefault(pai["codigo"] + "|" + str(pai["ordem"]), 0)
+                soma[pai["codigo"] + "|" + str(pai["ordem"])] += n["arrecadado"]
+        ruins = [k for k, v in soma.items() if v != valor[k]]
+        out.append(_res("receita_arvore_fecha_entre_niveis", 0, len(ruins), f"{len(soma)} nós com filhos conferidos (categoria → origem → espécie → subespécie → rubrica); divergentes: {ruins[:5] or 'nenhum'}"))
+        a = q1("SELECT COALESCE(SUM(arrecadado),0) FROM receita WHERE entidade=? AND exercicio=? AND ordem=7", E, ano)[0]
+        m = q1("SELECT COALESCE(SUM(arrecadado),0) FROM receita_mensal WHERE entidade=? AND exercicio=? AND ordem=7", E, ano)[0]
+        out.append(_res("receita_rubricas_soma_dos_meses_vs_anual", a, m, "soma das rubricas (nível 7) nos meses × consulta anual (pode divergir por lançamento entre as coletas)", tolera_aviso=True))
+    if q1("SELECT COUNT(*) FROM siconfi_receita")[0] and ano == date.today().year:
+        ruim = []
+        for origem, col in (("dca", "Receitas Brutas Realizadas"), ("rreo", "Até o Bimestre (c)")):
+            for (ex, per) in conn.execute("SELECT DISTINCT exercicio, periodo FROM siconfi_receita WHERE origem=?", (origem,)).fetchall():
+                g = lambda cod: (q1("SELECT valor FROM siconfi_receita WHERE origem=? AND exercicio=? AND periodo=? AND coluna=? AND cod_conta=?", origem, ex, per, col, cod) or [None])[0]
+                tot = g("ReceitasExcetoIntraOrcamentarias")
+                partes = (g("RO1.0.0.0.00.0.0"), g("RO2.0.0.0.00.0.0")) if origem == "dca" else (g("ReceitasCorrentes"), g("ReceitasDeCapital"))
+                if tot is not None and None not in partes and abs(tot - sum(partes)) > 100:     # tolerância de R$ 1,00 (arredondamento da fonte)
+                    ruim.append(f"{origem} {ex}/{per}: {tot - sum(partes)}")
+        out.append(_res("siconfi_total_igual_a_soma_das_categorias", 0, len(ruim), f"DCA e RREO: total = correntes + capital (tolerância R$ 1,00); divergentes: {ruim[:4] or 'nenhum'}"))
     return out

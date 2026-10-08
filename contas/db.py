@@ -168,6 +168,28 @@ CREATE TABLE IF NOT EXISTS alerta (
   data_registro TEXT, valor INTEGER NOT NULL, secretaria TEXT, fornecedor TEXT, documento TEXT,
   elemento TEXT, modalidade TEXT, descricao TEXT,
   UNIQUE (entidade, tipo, chave));
+-- ===== Fase 4b: receitas (entradas) =====
+-- Receita do portal mês a mês, TODOS os níveis úteis (1,2,3,4 e 7; o nível 10 só repete o 7 dividido por vinculação). Só exercício corrente.
+CREATE TABLE IF NOT EXISTS receita_mensal (
+  entidade TEXT NOT NULL, exercicio INTEGER NOT NULL, mes INTEGER NOT NULL, codigo TEXT NOT NULL, ordem INTEGER NOT NULL,
+  nome TEXT NOT NULL, arrecadado INTEGER NOT NULL,
+  PRIMARY KEY (entidade, exercicio, mes, codigo, ordem));
+-- Demonstrativos oficiais do Tesouro Nacional (SICONFI): DCA (anual, 'Anexo I-C') e RREO (bimestral, 'Anexo 01'). Perímetro e convenção
+-- (líquido do Fundeb nas linhas do RREO; consolidado com regime próprio) diferem do portal: NUNCA somar nem comparar com o portal.
+CREATE TABLE IF NOT EXISTS siconfi_receita (
+  origem TEXT NOT NULL,            -- 'dca' | 'rreo'
+  exercicio INTEGER NOT NULL, periodo INTEGER NOT NULL,   -- 0 na DCA; bimestre (1-6) no RREO
+  coluna TEXT NOT NULL, cod_conta TEXT NOT NULL, conta TEXT NOT NULL, valor INTEGER NOT NULL, coletado_em TEXT NOT NULL,
+  PRIMARY KEY (origem, exercicio, periodo, coluna, cod_conta));
+-- Valores que passam pelo caixa mas NÃO são receita (retenções, consignações, cauções), agrupados por tipo. Sem nomes de pessoas.
+CREATE TABLE IF NOT EXISTS ingresso_extra (
+  entidade TEXT NOT NULL, exercicio INTEGER NOT NULL, grupo TEXT NOT NULL, valor INTEGER NOT NULL, lancamentos INTEGER NOT NULL,
+  PRIMARY KEY (entidade, exercicio, grupo));
+-- Emendas de origem FEDERAL/ESTADUAL recebidas (as municipais são despesa, não entrada).
+CREATE TABLE IF NOT EXISTS emenda_recebida (
+  entidade TEXT NOT NULL, numero TEXT NOT NULL, ano INTEGER, esfera TEXT, tipo TEXT, transferencia TEXT, autor TEXT,
+  valor_total INTEGER, receita_ano_anterior INTEGER, receita INTEGER, empenhado INTEGER, pago INTEGER,
+  PRIMARY KEY (entidade, numero));
 """
 
 

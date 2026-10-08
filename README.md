@@ -111,6 +111,16 @@ O site é estático, então a Vercel só hospeda a pasta `dist/` que a execuçã
 - `Novidades` (`#/novidades`) lista **registros novos** do portal (empenhos e contratos) acima dos limites ou por dispensa/inexigibilidade. A 1ª coleta de cada entidade é só linha de base (não alerta); só entram registros dos últimos 45 dias; anulações e empenhos de folha em nome do próprio ente ficam de fora. O texto é neutro e o nome/histórico de pessoas físicas beneficiárias segue a política de privacidade. Feed Atom em `data/alertas.xml`.
 - Botão **Compartilhar imagem** gera no navegador um cartão 1080×1080 (a estimativa aparece rotulada, com o valor real coletado e a fonte) e usa o compartilhamento do celular; também há link de WhatsApp com texto. A pré-visualização de links (`og.png`) é gerada no build com os números reais do dia.
 
+## Receitas (o que entra)
+
+Aba **Prefeitura → Receitas (entradas)**, com quatro visões:
+
+1. **De onde vem (ano corrente, portal):** árvore oficial da receita (categoria → origem → espécie → subespécie → rubrica), por período escolhido (janeiro até o mês X), com arrecadação própria × transferências (União, Estados, fundos), deduções, mês a mês e CSV. O nível 10 do portal só repete o 7 dividido por vinculação e não é somado; um nó pode ter o mesmo código do pai (deduções do Fundeb), por isso o nó é identificado por (código, nível).
+2. **Ano a ano (SICONFI/DCA)** e 3. **Mesmo período (SICONFI/RREO):** o portal só entrega receita do **exercício corrente** (para anos fechados devolve o plano do ano atual zerado; esses zeros nunca são gravados). O histórico vem do Tesouro Nacional (dados abertos), que tem perímetro e convenção próprios (consolidado com regime próprio de previdência; linhas do RREO líquidas do Fundeb). **Portal e SICONFI nunca são somados nem comparados entre si.** O SICONFI é coletado às segundas-feiras (ou com `--completo`, ou se estiver vazio).
+4. **Outras entradas:** emendas federais/estaduais e ingressos extraorçamentários (retenções de terceiros, agrupados por tipo, **não são receita** e não entram em totais).
+
+Conferências automáticas: a árvore fecha entre níveis, rubricas mês × ano, e total = correntes + capital nas duas séries do SICONFI.
+
 ## Câmara (Fase 3)
 
 - **Vereadores** são as únicas pessoas com nome na folha. Critério: cargo que **começa com "Vereador"** (inclui "Vereador suplente"). Os demais servidores só entram agregados (grupos < 3 pessoas viram "Outros"); nomes de não vereadores são descartados em memória.
