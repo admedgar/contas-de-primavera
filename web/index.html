@@ -23,23 +23,38 @@
   </div>
 </header>
 
-<section class="contador" aria-labelledby="t-contador">
-  <div class="largura">
-    <h1 id="t-contador" class="rotulo">Gasto acumulado <span id="ct-ent">da Prefeitura</span> em <span id="ct-ano">2026</span> <span class="selo">estimativa</span></h1>
-    <p class="valor" id="ct-valor" aria-hidden="true">R$ …</p>
-    <p class="sr" id="ct-sr"></p>
-    <div class="medidas" role="group" aria-label="Tipo de valor">
-      <button type="button" data-medida="empenhado" aria-pressed="false">Empenhado</button>
-      <button type="button" data-medida="liquidado" aria-pressed="false">Liquidado</button>
-      <button type="button" data-medida="pago" aria-pressed="true">Pago</button>
+<section class="contador" aria-label="Contadores">
+  <div class="largura contador-grade">
+    <div class="ct-col" id="ct-despesa" aria-labelledby="t-contador">
+      <h1 id="t-contador" class="rotulo">Gasto acumulado <span id="ct-ent">da Prefeitura</span> em <span id="ct-ano">2026</span> <span class="selo">estimativa</span></h1>
+      <p class="valor" id="ct-valor" aria-hidden="true">R$ …</p>
+      <p class="sr" id="ct-sr"></p>
+      <div class="medidas" role="group" aria-label="Tipo de valor do gasto">
+        <button type="button" data-medida="empenhado" aria-pressed="false">Empenhado</button>
+        <button type="button" data-medida="liquidado" aria-pressed="false">Liquidado</button>
+        <button type="button" data-medida="pago" aria-pressed="true">Pago</button>
+      </div>
+      <div class="compartilhar" role="group" aria-label="Compartilhar">
+        <button type="button" id="bt-cartao">Compartilhar imagem</button>
+        <a id="bt-whats" href="#" rel="noopener" target="_blank">WhatsApp</a>
+      </div>
+      <p class="aviso" id="ct-aviso"></p>
+      <dl class="mini" id="ct-mini"></dl>
+      <p class="nota" id="ct-nota"></p>
     </div>
-    <div class="compartilhar" role="group" aria-label="Compartilhar">
-      <button type="button" id="bt-cartao">Compartilhar imagem</button>
-      <a id="bt-whats" href="#" rel="noopener" target="_blank">WhatsApp</a>
+    <div class="ct-col ct-rec" id="ct-receita" aria-labelledby="t-receita" hidden>
+      <h2 id="t-receita" class="rotulo"><span id="cr-titulo">Receita bruta arrecadada</span> <span id="cr-ano">2026</span> <span class="selo" id="cr-selo">estimativa</span></h2>
+      <p class="valor" id="cr-valor" aria-hidden="true">R$ …</p>
+      <p class="sr" id="cr-sr"></p>
+      <div class="medidas" id="cr-medidas" role="group" aria-label="Tipo de valor da receita">
+        <button type="button" data-rec="bruta" aria-pressed="true">Bruta</button>
+        <button type="button" data-rec="liquida" aria-pressed="false">Líquida</button>
+      </div>
+      <div class="compartilhar" id="cr-links"><a href="#/prefeitura/receitas">Ver de onde vem a receita</a></div>
+      <p class="aviso" id="cr-aviso"></p>
+      <dl class="mini" id="cr-mini"></dl>
+      <p class="nota" id="cr-nota"></p>
     </div>
-    <p class="aviso" id="ct-aviso"></p>
-    <dl class="mini" id="ct-mini"></dl>
-    <p class="nota" id="ct-nota"></p>
   </div>
 </section>
 

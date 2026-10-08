@@ -192,6 +192,8 @@ class Retentativa(Base):
              mock.patch.object(cli.time, "sleep"), mock.patch.object(cli.alr, "registrar_novos", return_value=[]), \
              mock.patch.object(cli.pub, "publicar"), mock.patch.object(cli.alr, "publicar_alertas"), \
              mock.patch.object(cli, "plano_diario", return_value={"corrente": [2026], "fechados": [], "faltando": []}), \
+             mock.patch.object(cli.http, "sonda", return_value=(True, "HTTP 200")), \
+             mock.patch.object(config, "WEB_DATA", Path(self.tmp.name) / "web_data"), \
              mock.patch.object(config, "RAIZ", Path(self.tmp.name)):
             rc = cli.diario(self.conn, ["prefeitura"])
         return rc, chamadas
@@ -238,6 +240,7 @@ class Preflight(Base):
     def test_portal_fora_do_ar_pula_a_coleta_e_registra(self):
         with mock.patch.object(cli.http, "sonda", return_value=(False, "HTTP 530")), mock.patch.object(cli.time, "sleep"), \
              mock.patch.object(cli, "coletar", side_effect=AssertionError("não deveria coletar")), mock.patch.object(config, "RAIZ", Path(self.tmp.name)), \
+             mock.patch.object(config, "WEB_DATA", Path(self.tmp.name) / "web_data"), \
              mock.patch.object(cli.pub, "publicar"), mock.patch.object(cli.alr, "publicar_alertas"), mock.patch.object(cli.alr, "registrar_novos", return_value=[]):
             rc = cli.diario(self.conn, ["prefeitura", "camara"])
         self.assertEqual(rc & 1, 1)
@@ -248,3 +251,11 @@ class Preflight(Base):
         y = (config.RAIZ / ".github" / "workflows" / "diario.yml").read_text(encoding="utf-8")
         self.assertIn('cron: "17 15 * * *"', y); self.assertIn('cron: "17 21 * * *"', y)
         self.assertIn("needs: decidir", y); self.assertIn("rodar == 'true'", y)
+
+
+class TestesNaoTocamEmDadosReais(Base):
+    def test_diario_simulado_nao_escreve_em_web_data_real(self):
+        antes = {p: p.stat().st_mtime_ns for p in (config.RAIZ / "web" / "data").rglob("*.json")} if (config.RAIZ / "web" / "data").exists() else {}
+        Retentativa._roda(self, [0])
+        depois = {p: p.stat().st_mtime_ns for p in (config.RAIZ / "web" / "data").rglob("*.json")} if (config.RAIZ / "web" / "data").exists() else {}
+        self.assertEqual(antes, depois)

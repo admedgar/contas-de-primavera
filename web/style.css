@@ -95,3 +95,15 @@ ul.limpo{padding-left:20px}ul.limpo li{margin:4px 0}
 .compartilhar button:hover,.compartilhar a:hover{background:rgba(255,255,255,.16)}
 .faixa-atraso{background:var(--aviso-fundo);border-bottom:1px solid var(--aviso-borda);padding:8px 16px;text-align:center;font-size:.9rem}
 .alerta-linha .motivo{font-size:.72rem}
+
+/* Dois contadores lado a lado (gasto à esquerda, receita à direita) em telas largas */
+.contador-grade{display:grid;gap:22px 40px;grid-template-columns:1fr}
+.ct-col{min-width:0}
+.ct-rec{border-top:1px solid rgba(255,255,255,.28);padding-top:18px}
+.ct-rec[hidden]{display:none}
+@media (min-width:980px){
+  .contador-grade{grid-template-columns:1fr 1fr}
+  .ct-rec{border-top:0;padding-top:0;border-left:1px solid rgba(255,255,255,.28);padding-left:40px}
+  .contador .valor{font-size:clamp(1.8rem,3.4vw,3rem)}
+}
+.ct-rec .compartilhar a{display:inline-block}

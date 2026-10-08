@@ -53,7 +53,7 @@ function valorEstimado() {
   const decorrido = Math.min((Date.now() - Date.parse(c.coleta_em)) / 1000, 3 * 86400); // não projeta além de 3 dias sem nova coleta
   return m.base + m.centavos_por_segundo * Math.max(decorrido, 0);
 }
-function tick() { $("#ct-valor").textContent = BRL.format(valorEstimado() / 100); }
+function tick() { $("#ct-valor").textContent = BRL.format(valorEstimado() / 100); tickReceita(); }
 function desenhaContadorFixo(resumo, ano, meta) {
   const r = resumo.anos[ano], c = r.contador;
   if (!c) { $("#ct-valor").textContent = brl(r[ESTADO.medida]); $("#ct-nota").textContent = "Totais do exercício, coletados em " + dataHoraBR(r.coleta_empenhos) + "."; return; }
@@ -88,7 +88,7 @@ function ligaSeletores(rerender) {
 }
 function definirMedida(m) {
   ESTADO.medida = m;
-  document.querySelectorAll(".medidas button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.medida === m)));
+  document.querySelectorAll("#ct-despesa .medidas button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.medida === m)));
   if (ESTADO.resumo) { desenhaContadorFixo(ESTADO.resumo, Math.max(...Object.keys(ESTADO.resumo.anos).map(Number)), ESTADO.meta); if (contadorInfo) tick(); }
 }
 function tabelaBarras(linhas, { rotulo, valor, extra = [], caption }) {
@@ -357,6 +357,7 @@ async function usaEntidade(ent) {
   const anos = ESTADO.meta.entidades[ent].anos;
   if (!ESTADO.ano || !anos.includes(ESTADO.ano)) ESTADO.ano = anos[anos.length - 1];
   iniciaContador(ESTADO.resumo, ESTADO.meta);
+  desenhaReceitaTopo();
   const f = ESTADO.meta.entidades[ent].fontes.find((x) => x.fonte === "despesas_gerais");
   $("#rodape-coleta").textContent = "Dados " + NOME_ENT[ent] + " coletados em " + dataHoraBR(f && f.coletado_em) + ".";
 }
@@ -462,10 +463,11 @@ async function iniciar() {
   } catch (e) {
     $("#carregando").textContent = "Dados indisponíveis no momento: " + e.message; return;
   }
-  document.querySelectorAll(".medidas button").forEach((b) => (b.onclick = () => { definirMedida(b.dataset.medida); const a = $("#sel-medida"); if (a) { a.value = b.dataset.medida; a.onchange(); } }));
+  document.querySelectorAll("#ct-despesa .medidas button").forEach((b) => (b.onclick = () => { definirMedida(b.dataset.medida); const a = $("#sel-medida"); if (a) { a.value = b.dataset.medida; a.onchange(); } }));
   window.addEventListener("hashchange", rota);
   ligaCompartilhar();
   verificaAtraso();
+  await iniciaReceitaTopo();
   rota();
 }
 iniciar();
@@ -544,4 +546,55 @@ async function paginaNovidades() {
   $("#n-ent").onchange = (e) => { F.ent = e.target.value; desenha(); };
   $("#n-mot").onchange = (e) => { F.motivo = e.target.value; desenha(); };
   desenha();
+}
+
+
+/* ---------- Contador de receita (coluna da direita) ---------- */
+const REC_TOPO = { dados: null, tipo: "bruta" };
+function valorReceitaEstimado() {
+  const c = REC_TOPO.dados.contador, m = c[REC_TOPO.tipo];
+  const decorrido = Math.min((Date.now() - Date.parse(c.coleta_em)) / 1000, 3 * 86400);
+  return m.base + m.centavos_por_segundo * Math.max(decorrido, 0);
+}
+function tickReceita() {
+  const d = REC_TOPO.dados;
+  if (d && ESTADO.ent === "prefeitura" && d.contador) $("#cr-valor").textContent = BRL.format(valorReceitaEstimado() / 100);
+}
+function desenhaReceitaTopo() {
+  const box = $("#ct-receita"), d = REC_TOPO.dados;
+  if (!d) { box.hidden = true; return; }
+  box.hidden = false;
+  const hab = d.habitantes, dias = d.contador ? d.contador.dias_decorridos : null;
+  if (ESTADO.ent === "camara") {                      // Câmara: o que entra é o repasse da Prefeitura (valor real, sem estimativa)
+    const c = d.camara;
+    $("#cr-titulo").textContent = "Repasse recebido da Prefeitura"; $("#cr-ano").textContent = d.ano; $("#cr-selo").hidden = true;
+    $("#cr-valor").textContent = brl(c.repasse); $("#cr-medidas").hidden = true; $("#cr-aviso").textContent = "";
+    $("#cr-sr").textContent = `Repasse da Prefeitura à Câmara em ${d.ano}: ${brl(c.repasse)}.`;
+    $("#cr-links").innerHTML = `<a href="#/camara/resumo">Ver custo da Câmara</a>`;
+    $("#cr-mini").innerHTML = [["Devolvido à Prefeitura", brl0(c.devolucao)], ["Repasse líquido", brl0(c.liquido)],
+      ["Por habitante no ano", hab ? brl(c.liquido / hab) : "—"]].map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("");
+    $("#cr-nota").innerHTML = `Duodécimo: valor que a Prefeitura transfere todo mês à Câmara. Valor real do portal, não estimado. <a href="#/camara/resumo" style="color:#fff">Detalhe</a>.`;
+    return;
+  }
+  const tipo = REC_TOPO.tipo, total = tipo === "bruta" ? d.bruta : d.liquida;
+  $("#cr-titulo").textContent = tipo === "bruta" ? "Receita bruta arrecadada em" : "Receita líquida arrecadada em"; $("#cr-ano").textContent = d.ano;
+  $("#cr-selo").hidden = !d.contador; $("#cr-medidas").hidden = false;
+  document.querySelectorAll("#cr-medidas button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.rec === tipo)));
+  $("#cr-links").innerHTML = `<a href="#/prefeitura/receitas">Ver de onde vem a receita</a>`;
+  $("#cr-valor").textContent = BRL.format((d.contador ? valorReceitaEstimado() : total) / 100);
+  $("#cr-sr").textContent = `Receita ${tipo === "bruta" ? "bruta" : "líquida"} coletada em ${dataHoraBR(d.coleta)}: ${brl(total)}. O contador na tela é uma estimativa.`;
+  const horasAtraso = d.coleta ? (Date.now() - Date.parse(d.coleta)) / 3.6e6 : 0;
+  $("#cr-aviso").textContent = horasAtraso > 72 ? "Atenção: os dados não são atualizados há mais de 3 dias; o contador parou de estimar." : "";
+  $("#cr-mini").innerHTML = [
+    ["Valor coletado (real)", brl0(total) + " em " + dataBR((d.coleta || "").slice(0, 10))],
+    ["Deduções (Fundeb e outras)", brl0(d.deducoes)],
+    ["Receita líquida", brl0(d.liquida)],
+    ["Por habitante no ano", hab ? brl(total / hab) : "—"],
+  ].map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("");
+  $("#cr-nota").innerHTML = `<strong>Estimativa:</strong> sobe em ritmo constante, a média do ano até a última coleta (${dataHoraBR(d.coleta)}). A receita real chega em valores irregulares ao longo dos meses (repasses e impostos). Fonte: portal da Prefeitura. <a href="#/metodologia" style="color:#fff">Como é calculado</a>.`;
+}
+async function iniciaReceitaTopo() {
+  try { REC_TOPO.dados = await carregar("prefeitura/resumo_receita.json"); } catch (e) { REC_TOPO.dados = null; }
+  document.querySelectorAll("#cr-medidas button").forEach((b) => (b.onclick = () => { REC_TOPO.tipo = b.dataset.rec; desenhaReceitaTopo(); }));
+  desenhaReceitaTopo();
 }

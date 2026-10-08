@@ -123,6 +123,34 @@ def portal(conn) -> dict:
             "coleta": ult["fim"] if ult else None, "nos": nos}
 
 
+def resumo_receita(conn) -> dict:
+    """Bloco pequeno para o topo do site: receita bruta/líquida acumulada do exercício corrente (parâmetros do contador linear) e,
+    para a aba Câmara, o repasse recebido da Prefeitura."""
+    from datetime import datetime, timedelta, timezone
+    ano = conn.execute("SELECT MAX(exercicio) FROM receita WHERE entidade=?", (E,)).fetchone()[0]
+    if not ano:
+        return None
+    topo = conn.execute("SELECT codigo, arrecadado FROM receita WHERE entidade=? AND exercicio=? AND ordem=1", (E, ano)).fetchall()
+    bruta = sum(r["arrecadado"] for r in topo if not r["codigo"].startswith("9"))
+    ded = sum(r["arrecadado"] for r in topo if r["codigo"].startswith("9"))
+    ult = conn.execute("SELECT fim FROM execucao_coleta WHERE entidade=? AND fonte='receita_orcamentaria' AND status='ok' AND registros>0 ORDER BY id DESC LIMIT 1", (E,)).fetchone()
+    coleta = ult["fim"] if ult else None
+    contador = None
+    if coleta and ano == date.today().year:
+        ini = datetime(ano, 1, 1, tzinfo=timezone(timedelta(hours=-4)))
+        fim = datetime.strptime(coleta, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        seg = max((fim - ini).total_seconds(), 1.0)
+        contador = {"inicio_ano": ini.isoformat(), "coleta_em": coleta, "dias_decorridos": round(seg / 86400, 2),
+                    "bruta": {"base": bruta, "centavos_por_segundo": bruta / seg},
+                    "liquida": {"base": bruta + ded, "centavos_por_segundo": (bruta + ded) / seg}}
+    rep = conn.execute("SELECT COALESCE(SUM(repasse),0) r FROM transferencia WHERE entidade=? AND exercicio=? AND UPPER(recebedora) LIKE '%CAMARA%'", (E, ano)).fetchone()["r"]
+    dev = conn.execute("SELECT COALESCE(SUM(devolucao),0) d FROM transferencia WHERE entidade=? AND exercicio=? AND UPPER(pagadora) LIKE '%CAMARA%'", (E, ano)).fetchone()["d"]
+    pop = conn.execute("SELECT habitantes FROM populacao WHERE ano=?", (ano,)).fetchone()
+    return {"ano": ano, "bruta": bruta, "deducoes": ded, "liquida": bruta + ded, "coleta": coleta, "contador": contador,
+            "habitantes": pop["habitantes"] if pop else None,
+            "camara": {"repasse": rep, "devolucao": dev, "liquido": rep - dev}}
+
+
 def publicar_receitas(conn, saida: Path = None) -> dict:
     saida = Path(saida or config.WEB_DATA)
     ext = _rows(conn, "SELECT exercicio, grupo, valor, lancamentos FROM ingresso_extra WHERE entidade=? ORDER BY valor DESC", E)
@@ -137,5 +165,6 @@ def publicar_receitas(conn, saida: Path = None) -> dict:
            "emendas": {"itens": emendas, "coleta": ult("emendas")[0]},
            "coletas": {"siconfi_dca": ult("siconfi_dca"), "siconfi_rreo": ult("siconfi_rreo")}, "gerado_em": db.agora()}
     _grava(saida / E / "receitas.json", doc)
+    _grava(saida / E / "resumo_receita.json", resumo_receita(conn))
     return {"portal_nos": len(doc["portal"]["nos"]) if doc["portal"] else 0, "dca_contas": len(doc["dca"]["contas"]) if doc["dca"] else 0,
             "rreo_linhas": len(doc["rreo"]["linhas"]) if doc["rreo"] else 0}
