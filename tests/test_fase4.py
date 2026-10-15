@@ -297,3 +297,13 @@ class IbgeEPortalParcial(Base):
         self.assertEqual(config.NOME_SITE, "Transparência Primavera")
         self.assertIn("Transparência Primavera", (config.RAIZ / "web" / "index.html").read_text(encoding="utf-8"))
         self.assertNotIn("Contas de Primavera", (config.RAIZ / "web" / "index.html").read_text(encoding="utf-8"))
+
+
+class StatusDoSite(Base):
+    def test_erro_do_ibge_com_populacao_guardada_vira_aviso_e_nao_gera_faixa(self):
+        self.conn.execute("INSERT INTO populacao VALUES (2026, 99053, 'IBGE', 'u', 'x')")
+        self.conn.execute("INSERT INTO execucao_coleta (entidade, fonte, inicio, fim, status, mensagem) VALUES ('prefeitura','ibge_populacao','a','b','erro','SSL')")
+        self.conn.execute("INSERT INTO execucao_coleta (entidade, fonte, inicio, fim, status, mensagem) VALUES ('prefeitura','mensal','a','b','erro','boom')")
+        self.conn.commit()
+        st = {f["fonte"]: f["status"] for f in site.status(self.conn)["entidades"]["prefeitura"]["fontes"]}
+        self.assertEqual(st["ibge_populacao"], "aviso"); self.assertEqual(st["mensal"], "erro")     # outras fontes continuam sendo erro

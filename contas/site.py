@@ -29,8 +29,11 @@ def status(conn) -> dict:
         for r in conn.execute("SELECT fonte, MAX(id) mid FROM execucao_coleta WHERE entidade=? GROUP BY fonte", (ent,)):
             ult = conn.execute("SELECT * FROM execucao_coleta WHERE id=?", (r["mid"],)).fetchone()
             ok = conn.execute("SELECT fim FROM execucao_coleta WHERE entidade=? AND fonte=? AND status='ok' ORDER BY id DESC LIMIT 1", (ent, r["fonte"])).fetchone()
+            status_f = ult["status"]
+            if status_f == "erro" and r["fonte"] == "ibge_populacao" and conn.execute("SELECT COUNT(*) FROM populacao").fetchone()[0]:
+                status_f = "aviso"          # população muda 1x/ano: com valor guardado, a falha do IBGE não é falha do site
             fontes.append({"fonte": r["fonte"], "ultimo_ok": ok["fim"] if ok else None, "ultima_tentativa": ult["fim"] or ult["inicio"],
-                           "status": ult["status"], "erro": (ult["mensagem"] or "").splitlines()[0][:200] if ult["status"] == "erro" else None})
+                           "status": status_f, "erro": (ult["mensagem"] or "").splitlines()[0][:200] if ult["status"] == "erro" else None})
         out["entidades"][ent] = {"fontes": sorted(fontes, key=lambda f: f["fonte"])}
     return out
 
