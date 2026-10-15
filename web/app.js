@@ -1,6 +1,7 @@
-/* Contas de Primavera — site estático. Só lê JSON pré-gerado em data/. Valores em centavos. */
+/* Transparência Primavera — site estático. Só lê JSON pré-gerado em data/. Valores em centavos. */
 "use strict";
 
+const NOME_SITE = "Transparência Primavera";
 const ESTADO = { medida: "pago", ano: null, meta: null, cache: {}, ent: "prefeitura", resumos: {} };
 const NOME_ENT = { prefeitura: "da Prefeitura", camara: "da Câmara" };
 const PORTAL_NOME = { prefeitura: "Portal da Transparência da Prefeitura", camara: "Portal da Transparência da Câmara" };
@@ -70,7 +71,7 @@ function desenhaContadorFixo(resumo, ano, meta) {
   ESTADO.compart = { ent: ESTADO.ent, ano, medida: ESTADO.medida, total, coleta: c.coleta_em, hab, dias };
   const p = meta.populacao[String(ano)];
   $("#ct-nota").innerHTML = `<strong>Estimativa:</strong> o valor sobe em ritmo constante, a média do ano até a última coleta (${dataHoraBR(c.coleta_em)}). O valor real é o "coletado". ` +
-    (p ? `População: ${NUM.format(p.habitantes)} hab. (estimativa do <a href="${esc(p.url)}" style="color:#fff">IBGE</a>). ` : "") +
+    (p ? `População: ${NUM.format(p.habitantes)} hab. (estimativa${p.referencia ? " de " + p.referencia : ""} do <a href="${esc(p.url)}" style="color:#fff">IBGE</a>). ` : "") +
     `<a href="#/metodologia" style="color:#fff">Como é calculado</a>.`;
 }
 
@@ -485,7 +486,7 @@ function desenhaCartao() {
   g.fillStyle = "#0b5c7a"; g.fillRect(0, 0, W, H); g.fillStyle = "#08465e"; g.fillRect(0, H - 150, W, 150);
   const t = (txt, x, y, tam, cor = "#fff", peso = "600") => { g.fillStyle = cor; g.font = `${peso} ${tam}px system-ui, -apple-system, "Segoe UI", sans-serif`; g.fillText(txt, x, y); };
   const quebra = (txt, x, y, larg, tam, cor, lh) => { g.font = `500 ${tam}px system-ui, sans-serif`; let linha = ""; for (const w of txt.split(" ")) { const tt = linha + w + " "; if (g.measureText(tt).width > larg && linha) { t(linha, x, y, tam, cor, "500"); y += lh; linha = w + " "; } else linha = tt; } t(linha, x, y, tam, cor, "500"); return y; };
-  t("Contas de Primavera", 70, 110, 44, "#cde4ee");
+  t(NOME_SITE, 70, 110, 44, "#cde4ee");
   t(`Gasto acumulado ${NOME_ENT[c.ent]} em ${c.ano}`, 70, 220, 54);
   const est = contadorInfo ? valorEstimado() : c.total;
   t(BRL.format(est / 100), 70, 380, 100, "#fff", "800");

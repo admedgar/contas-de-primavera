@@ -158,7 +158,7 @@ def feed_atom(itens: list, url_site: str = None, gerado_em: str = None) -> str:
     ent = "".join(
         f"<entry><id>tag:contas-de-primavera,2026:alerta-{i['id']}</id><title>{escape(NOME_ENT[i['entidade']] + ': ' + ('novo contrato' if i['tipo'] == 'contrato' else 'novo empenho') + ' de ' + _reais(i['valor']))}</title>"
         f"<updated>{i['criado_em']}</updated><link href=\"{escape(base)}/#/novidades\"/><summary>{escape(i['texto'])}</summary></entry>" for i in itens)
-    return ('<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom"><title>Contas de Primavera: novos registros</title>'
+    return ('<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom"><title>Transparência Primavera: novos registros</title>'
             f'<id>tag:contas-de-primavera,2026:alertas</id><updated>{gerado_em or db.agora()}</updated><link href="{escape(base)}/"/>{ent}</feed>')
 
 

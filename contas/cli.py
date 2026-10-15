@@ -9,7 +9,8 @@
   build    [--saida dist]          monta o site pronto para hospedar (metadados, cartão de compartilhamento, status)
   diario   [--entidade E|todas] [--completo]
                                    o que o agendador roda: coleta, valida, alerta, publica (ambas as entidades)
-Códigos de saída:  0 ok · 1 falha de coleta em alguma fonte · 2 divergência de validação (não publicar) · 3 = 1+2"""
+Códigos de saída (somam bits):  0 ok · 1 falha de coleta em alguma fonte · 2 divergência de validação (não publicar)
+                                 · 4 portal fora do ar (nada coletado; o site segue com a última versão e o agendador tenta de novo)"""
 from __future__ import annotations
 
 import argparse
@@ -57,7 +58,14 @@ def coletar(conn, entidade, anos, so=None, force=False) -> int:
             erros += 1
             logging.error("falha em %s: %s", nome, e)
     if not so or "ibge" in so:
-        tenta("ibge", lambda: ibge.coletar_populacao(conn))
+        # A população do IBGE muda uma vez por ano: falha dela NUNCA derruba a execução quando já existe um valor guardado.
+        try:
+            ibge.coletar_populacao(conn)
+        except Exception as e:  # noqa: BLE001
+            tem = conn.execute("SELECT COUNT(*) FROM populacao").fetchone()[0] > 0
+            logging.warning("IBGE indisponível (%s); %s", e, "mantendo a população já guardada" if tem else "sem população guardada")
+            if not tem:
+                erros += 1
     por_ano = dict(FONTES_ANO)
     por_entidade = dict(FONTES_ENTIDADE)
     if entidade == "camara":
@@ -95,6 +103,12 @@ def plano_diario(conn, entidade: str, hoje: date = None, completo: bool = False)
     return {"corrente": [hoje.year], "fechados": sorted(set(revisar) | set(faltando)), "faltando": faltando}
 
 
+def ibge_devido(conn, hoje: date = None, completo: bool = False) -> bool:
+    """População: coleta às segundas, com --completo, ou se não houver nenhum valor guardado (muda no máximo uma vez por ano)."""
+    hoje = hoje or date.today()
+    return completo or hoje.weekday() == 0 or conn.execute("SELECT COUNT(*) FROM populacao").fetchone()[0] == 0
+
+
 def siconfi_devido(conn, hoje: date = None, completo: bool = False) -> bool:
     """SICONFI só muda quando a prefeitura declara (bimestral/anual): coleta às segundas, com --completo ou se ainda não houver dado."""
     hoje = hoje or date.today()
@@ -106,6 +120,7 @@ def fontes_fechadas(entidade: str) -> list:      # a receita do portal só exist
     return ["despesas", "totais", "mensal"] + (["folha", "diarias", "transferencias"] if entidade == "camara" else [])
 
 
+RC_PORTAL_FORA = 4
 TENTATIVAS_SONDA = 3
 ESPERA_SONDA_S = 30
 TENTATIVAS_CONFERENCIA = 2
@@ -144,10 +159,11 @@ def portal_no_ar(conn, ent) -> bool:
 def diario(conn, entidades, completo=False, force=False) -> int:
     rc = 0
     ibge_feito = False
+    fora = 0
     todas = list(FONTES_ANO) + list(FONTES_ENTIDADE) + list(FONTES_ENTIDADE_PREFEITURA) + list(FONTES_ANO_CAMARA)
     for ent in entidades:
         if not portal_no_ar(conn, ent):
-            rc |= 1
+            fora += 1
             print(f"[{ent}] portal fora do ar: coleta pulada; o site segue com a última versão (nova tentativa no próximo agendamento).")
             continue
         plano = plano_diario(conn, ent, completo=completo)
@@ -155,10 +171,8 @@ def diario(conn, entidades, completo=False, force=False) -> int:
         if plano["fechados"]:
             rc |= 1 if coletar(conn, ent, plano["fechados"], so=fontes_fechadas(ent), force=force) else 0
         so = [x for x in todas if not (x == "siconfi" and not siconfi_devido(conn, completo=completo))]
-        if ibge_feito:
-            so = [x for x in so if x != "ibge"]                               # população do IBGE: uma vez por execução
-        else:
-            so.append("ibge")
+        if not ibge_feito and ibge_devido(conn, completo=completo):
+            so.append("ibge")                                                  # população do IBGE: só quando devido e uma vez por execução
         rc |= 1 if coletar(conn, ent, plano["corrente"], so=so, force=force) else 0
         ibge_feito = True
         for ano in sorted(set(plano["corrente"]) | set(plano["fechados"])):
@@ -173,6 +187,10 @@ def diario(conn, entidades, completo=False, force=False) -> int:
                 coletar(conn, ent, [ano], so=["despesas", "totais"], force=True)
                 div = _validar_e_imprimir(conn, ent, ano)
             rc |= 2 if div else 0
+    if fora == len(entidades):
+        rc |= RC_PORTAL_FORA                  # nada foi coletado: o agendador tenta de novo; não é defeito do projeto
+    elif fora:
+        rc |= 1                               # só um dos portais caiu: o outro foi atualizado e é publicado
     novos_total = []
     if rc & 2:
         print("DIVERGÊNCIA na validação: nada foi publicado (o site continua com a última versão boa).")

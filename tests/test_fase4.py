@@ -161,14 +161,15 @@ class Workflow(unittest.TestCase):
     def test_agendamento_e_portao_de_publicacao(self):
         y = (config.RAIZ / ".github" / "workflows" / "diario.yml").read_text(encoding="utf-8")
         self.assertIn("cron:", y); self.assertIn("python -m contas diario", y); self.assertIn("deploy-pages", y)
-        self.assertIn("rc == '0' || steps.diario.outputs.rc == '1'", y)      # divergência (2/3) nunca publica
+        self.assertIn("steps.diario.outputs.publicar == 'true'", y)
+        self.assertIn("$((rc & 2)) -eq 0", y)                                # divergência (bit 2) nunca publica
         self.assertNotIn("hotmail", y.lower())
 
     def test_deploy_vercel_e_opcional_e_so_com_dados_conferidos(self):
         y = (config.RAIZ / ".github" / "workflows" / "diario.yml").read_text(encoding="utf-8")
         i = y.index("Publicar na Vercel")
         passo = y[i:i + 400]
-        self.assertIn("env.VERCEL_TOKEN != ''", passo); self.assertIn("rc == '0'", passo)    # sem token ou com divergência, não publica
+        self.assertIn("env.VERCEL_TOKEN != ''", passo); self.assertIn("publicar == 'true'", passo)    # sem token ou com divergência, não publica
         self.assertIn("secrets.VERCEL_TOKEN", y)                                            # token só como segredo
         v = json.loads((config.RAIZ / "web" / "vercel.json").read_text(encoding="utf-8"))
         self.assertTrue(any("/data/" in h["source"] for h in v["headers"]))
@@ -243,14 +244,17 @@ class Preflight(Base):
              mock.patch.object(config, "WEB_DATA", Path(self.tmp.name) / "web_data"), \
              mock.patch.object(cli.pub, "publicar"), mock.patch.object(cli.alr, "publicar_alertas"), mock.patch.object(cli.alr, "registrar_novos", return_value=[]):
             rc = cli.diario(self.conn, ["prefeitura", "camara"])
-        self.assertEqual(rc & 1, 1)
+        self.assertEqual(rc, cli.RC_PORTAL_FORA)                  # tudo fora do ar: código 4 (não é defeito; o agendador tenta de novo)
         r = self.conn.execute("SELECT status, mensagem FROM execucao_coleta WHERE fonte='portal_no_ar'").fetchall()
         self.assertEqual(len(r), 2); self.assertIn("530", r[0]["mensagem"])
 
     def test_agendamento_em_horario_comercial_com_segunda_chance(self):
         y = (config.RAIZ / ".github" / "workflows" / "diario.yml").read_text(encoding="utf-8")
-        self.assertIn('cron: "17 15 * * *"', y); self.assertIn('cron: "17 21 * * *"', y)
+        for janela in ("17 3", "17 15", "17 19", "17 23"):
+            self.assertIn(f'cron: "{janela} * * *"', y)
         self.assertIn("needs: decidir", y); self.assertIn("rodar == 'true'", y)
+        self.assertIn("-gt 20", y)                              # só roda se o site tiver mais de 20 h
+        self.assertIn("-gt 36", y)                              # só fica vermelho se o portal ficar fora mais de 36 h
 
 
 class TestesNaoTocamEmDadosReais(Base):
@@ -259,3 +263,37 @@ class TestesNaoTocamEmDadosReais(Base):
         Retentativa._roda(self, [0])
         depois = {p: p.stat().st_mtime_ns for p in (config.RAIZ / "web" / "data").rglob("*.json")} if (config.RAIZ / "web" / "data").exists() else {}
         self.assertEqual(antes, depois)
+
+
+class IbgeEPortalParcial(Base):
+    def test_falha_do_ibge_nao_conta_como_erro_quando_ha_populacao_guardada(self):
+        self.conn.execute("INSERT INTO populacao VALUES (2026, 99053, 'IBGE', 'u', 'x')"); self.conn.commit()
+        with mock.patch.object(cli.ibge, "coletar_populacao", side_effect=RuntimeError("SSL: CERTIFICATE_VERIFY_FAILED")):
+            self.assertEqual(cli.coletar(self.conn, "prefeitura", [2026], so=["ibge"]), 0)
+
+    def test_falha_do_ibge_sem_nenhuma_populacao_conta_como_erro(self):
+        with mock.patch.object(cli.ibge, "coletar_populacao", side_effect=RuntimeError("fora")):
+            self.assertEqual(cli.coletar(self.conn, "prefeitura", [2026], so=["ibge"]), 1)
+
+    def test_ibge_so_quando_devido(self):
+        self.assertTrue(cli.ibge_devido(self.conn, date(2026, 10, 15)))                    # vazio
+        self.conn.execute("INSERT INTO populacao VALUES (2026, 1, 'IBGE', 'u', 'x')"); self.conn.commit()
+        self.assertFalse(cli.ibge_devido(self.conn, date(2026, 10, 15)))                   # quinta-feira
+        self.assertTrue(cli.ibge_devido(self.conn, date(2026, 10, 12)))                    # segunda-feira
+        self.assertTrue(cli.ibge_devido(self.conn, date(2026, 10, 15), completo=True))
+
+    def test_so_um_portal_fora_publica_o_outro(self):
+        sondas = iter([(False, "HTTP 530"), (False, "HTTP 530"), (False, "HTTP 530"), (True, "HTTP 200")])
+        with mock.patch.object(cli.http, "sonda", side_effect=lambda e: next(sondas)), mock.patch.object(cli.time, "sleep"), \
+             mock.patch.object(cli, "coletar", return_value=0), mock.patch.object(cli, "_validar_e_imprimir", return_value=0), \
+             mock.patch.object(config, "RAIZ", Path(self.tmp.name)), mock.patch.object(config, "WEB_DATA", Path(self.tmp.name) / "w"), \
+             mock.patch.object(cli.pub, "publicar"), mock.patch.object(cli.pubc, "publicar_camara"), mock.patch.object(cli.pubr, "publicar_receitas"), \
+             mock.patch.object(cli.alr, "publicar_alertas"), mock.patch.object(cli.alr, "registrar_novos", return_value=[]), \
+             mock.patch.object(cli, "plano_diario", return_value={"corrente": [2026], "fechados": [], "faltando": []}):
+            rc = cli.diario(self.conn, ["prefeitura", "camara"])
+        self.assertEqual(rc, 1)                                  # parcial: erro de fonte, mas publica (bit 4 só quando TODOS caem)
+
+    def test_nome_do_site(self):
+        self.assertEqual(config.NOME_SITE, "Transparência Primavera")
+        self.assertIn("Transparência Primavera", (config.RAIZ / "web" / "index.html").read_text(encoding="utf-8"))
+        self.assertNotIn("Contas de Primavera", (config.RAIZ / "web" / "index.html").read_text(encoding="utf-8"))

@@ -15,7 +15,7 @@ def corpo(alertas: list, url_site: str = "") -> dict:
     linhas = [f"• {a['texto']}" for a in alertas[:MAX_ITENS]]
     if len(alertas) > MAX_ITENS:
         linhas.append(f"… e mais {len(alertas) - MAX_ITENS}.")
-    cab = f"Contas de Primavera: {len(alertas)} novo(s) registro(s) acima dos limites configurados."
+    cab = f"Transparência Primavera: {len(alertas)} novo(s) registro(s) acima dos limites configurados."
     rodape = f"\nVeja todos: {url_site.rstrip('/')}/#/novidades" if url_site else ""
     texto = cab + "\n" + "\n".join(linhas) + rodape
     return {"text": texto, "content": texto[:1900]}

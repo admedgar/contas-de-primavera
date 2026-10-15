@@ -70,6 +70,10 @@ def publicar(conn, entidade: str, saida: Path = None) -> dict:
     base = saida / entidade
     anos = anos_com_dados(conn, entidade)
     pop = {r["ano"]: dict(r) for r in conn.execute("SELECT * FROM populacao")}
+    for a in range(min(pop, default=0) + 1, date.today().year + 1):         # o IBGE só divulga a estimativa do ano em agosto
+        if pop and a not in pop:
+            ref = max(k for k in pop if k < a)
+            pop[a] = dict(pop[ref], referencia=ref)
     nomes_orgao = {r["codigo"]: r["nome"] for r in conn.execute("SELECT codigo, nome FROM orgao WHERE entidade=?", (entidade,))}
     nomes_unid = {r["codigo"]: r["nome"] for r in conn.execute("SELECT codigo, nome FROM unidade WHERE entidade=?", (entidade,))}
 
@@ -200,6 +204,9 @@ def publicar(conn, entidade: str, saida: Path = None) -> dict:
     meta = json.loads(meta_p.read_text()) if meta_p.exists() else {"entidades": {}}
     meta["gerado_em"] = db.agora()
     meta["populacao"] = {str(a): {"habitantes": p["habitantes"], "fonte": p["fonte"], "url": p["url"], "coletado_em": p["coletado_em"]} for a, p in pop.items() if a >= 2024}
+    for a, p in pop.items():
+        if p.get("referencia"):
+            meta["populacao"].setdefault(str(a), {})["referencia"] = p["referencia"]
     meta["entidades"][entidade] = {"nome": config.ENTIDADES[entidade]["nome"], "anos": anos, "portal": LINKS_PORTAL[entidade],
                                    "fontes": fontes, "ultimo_empenho": {str(a): resumo[a]["ultimo"] for a in anos}}
     _grava(meta_p, meta)

@@ -1,4 +1,4 @@
-# Contas de Primavera (nome provisório)
+# Transparência Primavera
 
 Impostômetro de Primavera do Leste (MT) com dados **oficiais** do Portal da Transparência (Fiorilli SCPI, API JSON pública).
 Apartidário: só números da fonte, com data/hora da coleta e link. Projeto independente, sem vínculo com Prefeitura, Câmara ou partidos.
@@ -28,7 +28,7 @@ python3 -m contas publicar --entidade camara                  # gera web/data/ca
 
 Histórico (uma vez): `python3 -m contas coletar --anos 2025 2024 --so despesas totais mensal receitas`, depois `validar --anos 2024 2025 2026` e `publicar`.
 Opções úteis: `--so despesas|totais|mensal|receitas|licitacoes|contratos|folha|ibge`, `--force` (rebaixa mesmo se já houver download de hoje), `--db caminho.sqlite`.
-Códigos de saída: `0` ok, `1` falha de coleta, `2` divergência de validação (usar no agendador para alertar).
+Códigos de saída: `0` ok, `1` falha de coleta em alguma fonte, `2` divergência de validação (nada é publicado), `4` portal fora do ar (nada coletado).
 
 ### Agendar
 
@@ -80,7 +80,7 @@ Passo a passo (uma vez):
 3. Em **Settings → Secrets and variables → Actions → Variables**: `CONTAS_CONTATO` = e-mail ou site para contato (entra no User-Agent enviado ao portal, para a prefeitura poder falar com você; não fica no código).
 4. (Opcional) Em **Secrets**: `ALERTA_WEBHOOK_URL` = endereço de webhook (Slack, Discord, Telegram via ponte, n8n…) para receber os alertas novos.
 5. Preencher `config/site.json` (`url_site` do Pages e `contato` que aparece na Metodologia) e fazer commit.
-6. **Actions → Atualização diária → Run workflow** (a primeira execução reconstrói o histórico). Depois roda sozinha todo dia às 11:17 de Cuiabá, com uma segunda tentativa às 17:17 se a primeira falhar (o portal da prefeitura sai do ar de madrugada: respondeu HTTP 530 às 03:30 em dois dias seguidos, por isso a coleta não roda nesse horário).
+6. **Actions → Atualização diária → Run workflow** (a primeira execução reconstrói o histórico). Depois roda sozinha: há 4 janelas por dia (03:17, 15:17, 19:17 e 23:17 UTC) e o job `decidir` só deixa a coleta rodar se o site publicado tiver **mais de 20 horas** (lê o `gerado_em` do próprio site). Assim há uma atualização por dia e, se o portal da prefeitura estiver fora do ar (respondeu HTTP 530 de madrugada e também à tarde em 14/10), as janelas seguintes tentam de novo sozinhas..
 
 Se algo falhar o job fica vermelho e o GitHub envia e-mail; o site continua com a última versão publicada. Domínio próprio (opcional): Settings → Pages → Custom domain (um `.com.br` custa cerca de R$ 40 por ano no Registro.br).
 
@@ -157,7 +157,7 @@ data/              banco SQLite e downloads brutos (não versionados)
 5. **Divergência nova na conferência** (job vermelho, nada publicado): comparar com o portal; se for um defeito da própria fonte, registrar em `config/validacao_conhecida.json` (com a diferença exata e a nota); se for do coletor, corrigir e adicionar teste.
 6. **Cache do banco perdido**: nada a fazer; a execução seguinte reconstrói (os alertas voltam a ter uma nova linha de base, sem enxurrada).
 7. **Limites de alerta** muito altos/baixos: editar `config/alertas.json`.
-8. **Portal fora do ar** (HTTP 5xx na sondagem): a coleta daquele dia é pulada de propósito, o site segue com a última versão e a segunda tentativa agendada cobre. Se persistir por dias, verificar se a prefeitura mudou o endereço do portal.
+8. **Portal fora do ar** (HTTP 5xx na sondagem, código de saída 4): nada é coletado, o site segue com a última versão, a execução termina com **aviso amarelo** (sem e-mail) e as janelas seguintes tentam de novo. Só fica vermelha se o site passar de 36 horas sem atualizar. O log informa o código de erro da Cloudflare quando houver. Se persistir por dias, verificar se a prefeitura mudou o endereço do portal.
 9. **Defasagem do detalhe**: se os totais do portal divergirem da soma dos empenhos mas o detalhe fechar ao centavo até a última data (e a diferença for ≤ 0,5%), a conferência vira *aviso* explicado, não bloqueio. Qualquer outra divergência bloqueia a publicação.
 10. Rodar `python3 -m unittest` antes de publicar qualquer ajuste de parser; adicionar um teste com o registro que quebrou.
 

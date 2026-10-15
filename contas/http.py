@@ -4,6 +4,7 @@ from __future__ import annotations
 import gzip
 import json
 import logging
+import re
 import time
 import urllib.error
 import urllib.parse
@@ -119,6 +120,11 @@ def sonda(entidade: str, timeout: int = 30):
         with _abrir(url) as r:
             return (200 <= r.status < 300), f"HTTP {r.status}"
     except urllib.error.HTTPError as e:
-        return False, f"HTTP {e.code}"
+        try:
+            corpo = e.read(4000).decode("utf-8", "replace")
+        except Exception:  # noqa: BLE001
+            corpo = ""
+        m = re.search(r"[Ee]rror(?: code)?\s*:?\s*(\d{4})", corpo)          # a Cloudflare informa o motivo (ex.: 1033, 1016) no corpo
+        return False, f"HTTP {e.code}" + (f" (erro Cloudflare {m.group(1)})" if m else "")
     except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
         return False, str(e)[:120]

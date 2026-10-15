@@ -12,7 +12,7 @@ from .alertas import carregar_config  # noqa: F401  (valida o arquivo de alertas
 
 def _meta_tags(site: dict, titulo: str, descricao: str) -> str:
     url = (site.get("url_site") or "").rstrip("/")
-    t = [f'<meta property="og:type" content="website">', f'<meta property="og:locale" content="pt_BR">',
+    t = [f'<meta property="og:site_name" content="{config.NOME_SITE}">', f'<meta property="og:type" content="website">', f'<meta property="og:locale" content="pt_BR">',
          f'<meta property="og:title" content="{titulo}">', f'<meta property="og:description" content="{descricao}">',
          '<meta name="twitter:card" content="summary_large_image">',
          '<link rel="alternate" type="application/atom+xml" title="Novos registros" href="data/alertas.xml">']
@@ -56,7 +56,7 @@ def montar(conn, saida=None) -> str:
     desc = f"Quanto a Prefeitura e a Câmara de Primavera do Leste gastaram em {ano}, com dados do Portal da Transparência oficial. Projeto independente."
     og = cartao.gerar(dist / "og.png", titulo, pago, "Pago", data_br, round(pago / r["habitantes"]) if r.get("habitantes") else None)
     html = (dist / "index.html").read_text(encoding="utf-8")
-    html = html.replace("</head>", _meta_tags(site, "Contas de Primavera", desc) + "\n</head>", 1)
+    html = html.replace("</head>", _meta_tags(site, config.NOME_SITE, desc) + "\n</head>", 1)
     (dist / "index.html").write_text(html, encoding="utf-8")
     (dist / "data" / "status.json").write_text(json.dumps(status(conn), ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     (dist / "data" / "site.json").write_text(json.dumps({k: v for k, v in site.items() if not k.startswith("_")}, ensure_ascii=False), encoding="utf-8")

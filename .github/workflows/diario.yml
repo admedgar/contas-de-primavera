@@ -3,9 +3,12 @@
 name: Atualização diária
 on:
   schedule:
-    # O portal da prefeitura sai do ar de madrugada (respondeu HTTP 530 às 03:30 em dois dias seguidos), então a coleta roda em horário comercial.
-    - cron: "17 15 * * *"         # 15:17 UTC = 11:17 em Cuiabá
-    - cron: "17 21 * * *"         # segunda chance, 17:17 em Cuiabá: só roda se não houve atualização bem-sucedida nas últimas 10 horas
+    # O portal da prefeitura fica fora do ar de forma imprevisível (HTTP 530 de madrugada e também à tarde/noite em 14/10) e o GitHub
+    # atrasa agendamentos em horas. Por isso há várias janelas por dia; o job "decidir" só deixa rodar se o site tiver mais de 20 horas.
+    - cron: "17 3 * * *"          # 23:17 em Cuiabá
+    - cron: "17 15 * * *"         # 11:17 em Cuiabá
+    - cron: "17 19 * * *"         # 15:17 em Cuiabá
+    - cron: "17 23 * * *"         # 19:17 em Cuiabá
   workflow_dispatch:
     inputs:
       completo:
@@ -27,20 +30,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
-      actions: read
       contents: read
     outputs:
       rodar: ${{ steps.d.outputs.rodar }}
+      idade_h: ${{ steps.d.outputs.idade_h }}
     steps:
+      - uses: actions/checkout@v4
       - id: d
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
         run: |
-          if [ "${{ github.event_name }}" != "schedule" ]; then echo "rodar=true" >> "$GITHUB_OUTPUT"; exit 0; fi
-          n=$(gh run list --workflow diario.yml --status success --limit 10 --json createdAt --jq '[.[] | select((.createdAt | fromdateiso8601) > (now - 36000))] | length')
-          echo "execuções bem-sucedidas nas últimas 10 h: $n"
-          if [ "$n" = "0" ]; then echo "rodar=true" >> "$GITHUB_OUTPUT"; else echo "rodar=false" >> "$GITHUB_OUTPUT"; fi
+          # idade REAL do que está publicado (campo gerado_em do próprio site), em horas; 999 se não for possível ler
+          url=$(python3 -c "import json;print((json.load(open('config/site.json')).get('url_site') or '').rstrip('/'))")
+          [ -z "$url" ] && url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}"
+          idade=$(curl -fsS -m 30 "$url/data/meta.json" 2>/dev/null | python3 -c "
+          import sys, json
+          from datetime import datetime, timezone
+          g = json.load(sys.stdin)['gerado_em']
+          print(int((datetime.now(timezone.utc) - datetime.strptime(g, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc)).total_seconds() // 3600))" 2>/dev/null || echo 999)
+          echo "site em $url com $idade h"
+          echo "idade_h=$idade" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" != "schedule" ] || [ "$idade" -gt 20 ]; then echo "rodar=true" >> "$GITHUB_OUTPUT"; else echo "rodar=false" >> "$GITHUB_OUTPUT"; fi
 
   atualizar:
     needs: decidir
@@ -79,6 +87,8 @@ jobs:
           python -m contas diario ${{ inputs.completo && '--completo' || '' }}
           rc=$?
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          # Publica se não houve divergência na conferência (bit 2) e se algo foi coletado (4 = portal fora do ar: nada mudou).
+          if [ $((rc & 2)) -eq 0 ] && [ "$rc" != "4" ]; then echo "publicar=true" >> "$GITHUB_OUTPUT"; else echo "publicar=false" >> "$GITHUB_OUTPUT"; fi
           exit 0
 
       - name: Guardar banco para a próxima execução
@@ -89,27 +99,27 @@ jobs:
           key: contas-db-${{ github.run_id }}
 
       - name: Montar site
-        if: steps.diario.outputs.rc == '0' || steps.diario.outputs.rc == '1'
+        if: steps.diario.outputs.publicar == 'true'
         run: python -m contas build
       - name: Configurar Pages
-        if: steps.diario.outputs.rc == '0' || steps.diario.outputs.rc == '1'
+        if: steps.diario.outputs.publicar == 'true'
         uses: actions/configure-pages@v5
       - name: Enviar site
-        if: steps.diario.outputs.rc == '0' || steps.diario.outputs.rc == '1'
+        if: steps.diario.outputs.publicar == 'true'
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
       - name: Publicar
         id: deploy
-        if: steps.diario.outputs.rc == '0' || steps.diario.outputs.rc == '1'
+        if: steps.diario.outputs.publicar == 'true'
         uses: actions/deploy-pages@v4
 
       - name: Publicar na Vercel (só se VERCEL_TOKEN estiver configurado)
-        if: (steps.diario.outputs.rc == '0' || steps.diario.outputs.rc == '1') && env.VERCEL_TOKEN != ''
+        if: steps.diario.outputs.publicar == 'true' && env.VERCEL_TOKEN != ''
         run: npx --yes vercel@latest deploy dist --prod --yes --token "$VERCEL_TOKEN"
 
       - name: Avisar novos alertas (webhook opcional)
-        if: steps.diario.outputs.rc == '0' || steps.diario.outputs.rc == '1'
+        if: steps.diario.outputs.publicar == 'true'
         env:
           ALERTA_WEBHOOK_URL: ${{ secrets.ALERTA_WEBHOOK_URL }}
         run: python -m contas notificar
@@ -118,9 +128,17 @@ jobs:
         if: always()
         run: |
           rc="${{ steps.diario.outputs.rc }}"
+          idade="${{ needs.decidir.outputs.idade_h }}"
           {
-            echo "### Atualização diária"
-            echo "- código de saída: \`${rc}\` (0 ok · 1 falha em alguma fonte, site publicado com a coleta anterior daquela parte · 2/3 divergência na conferência, **nada publicado**)"
+            echo "### Atualização"
+            echo "- código de saída: \`${rc}\` (0 ok · 1 falha em alguma fonte, o resto foi publicado · 2 divergência na conferência, **nada publicado** · 4 portal fora do ar, nada coletado)"
+            echo "- idade do site antes desta execução: ${idade} h"
             if [ -f data/alertas_novos.json ]; then echo "- alertas novos: $(python -c "import json;print(len(json.load(open('data/alertas_novos.json'))))")"; fi
           } >> "$GITHUB_STEP_SUMMARY"
-          if [ "$rc" != "0" ]; then echo "::error::Atualização com problema (código ${rc}). Veja o log da etapa de coleta."; exit 1; fi
+          if [ "$rc" = "0" ]; then exit 0; fi
+          if [ "$rc" = "4" ]; then
+            echo "::warning::Portal da prefeitura fora do ar; o site foi mantido (${idade} h). Nova tentativa na próxima janela."
+            if [ "$idade" -gt 36 ]; then echo "::error::Mais de 36 horas sem atualizar o site porque o portal segue fora do ar."; exit 1; fi
+            exit 0
+          fi
+          echo "::error::Atualização com problema (código ${rc}). Veja o log da etapa de coleta."; exit 1

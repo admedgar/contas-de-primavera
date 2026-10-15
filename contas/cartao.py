@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+NOME = "Transparência Primavera"
 CORES = {"fundo": (11, 92, 122), "texto": (255, 255, 255), "suave": (205, 228, 238), "faixa": (8, 70, 94)}
 FONTES = ["/System/Library/Fonts/Helvetica.ttc", "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
           "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
@@ -38,7 +39,7 @@ def gerar(caminho: Path, titulo: str, valor_centavos: int, medida: str, data_br:
     d = ImageDraw.Draw(img)
     d.rectangle([0, H - 90, W, H], fill=CORES["faixa"])
     f = lambda t: _fonte(ImageFont, t)
-    d.text((60, 50), "Contas de Primavera", font=f(40), fill=CORES["suave"])
+    d.text((60, 50), NOME, font=f(40), fill=CORES["suave"])
     d.text((60, 130), titulo, font=f(46), fill=CORES["texto"])
     d.text((60, 215), reais_curto(valor_centavos), font=f(118), fill=CORES["texto"])
     d.text((60, 365), f"{medida} · valor coletado em {data_br}", font=f(38), fill=CORES["suave"])

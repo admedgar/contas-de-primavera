@@ -22,7 +22,7 @@ IBGE_MUNICIPIO = "5107040"  # Primavera do Leste (MT)
 _CONTATO = os.environ.get("CONTAS_CONTATO", "").strip()
 USER_AGENT = os.environ.get(
     "CONTAS_USER_AGENT",
-    "ContasDePrimavera/0.4 (projeto independente de transparencia" + (f"; contato: {_CONTATO}" if _CONTATO else "") + ")",
+    "TransparenciaPrimavera/0.4 (projeto independente de transparencia" + (f"; contato: {_CONTATO}" if _CONTATO else "") + ")",
 )
 PAUSA_ENTRE_REQUISICOES_S = float(os.environ.get("CONTAS_PAUSA_S", "2.0"))
 TIMEOUT_S = 600
@@ -42,6 +42,7 @@ ELEMENTOS_PF_VISIVEIS = {"30", "35", "36", "37", "39", "40", "51", "52"}   # mat
 # diárias (14), premiações (31), auxílios financeiros a pessoas físicas (48). Omitidos na política "beneficiarios".
 ELEMENTOS_SEMPRE_PESSOA = {"14", "31", "48"}
 
+NOME_SITE = "Transparência Primavera"
 ARQ_ALERTAS = RAIZ / "config" / "alertas.json"
 ARQ_SITE = RAIZ / "config" / "site.json"
 ARQ_VALIDACAO_CONHECIDA = RAIZ / "config" / "validacao_conhecida.json"
