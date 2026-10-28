@@ -483,23 +483,25 @@ function textoCompartilhar() {
 function desenhaCartao() {
   const c = ESTADO.compart, W = 1080, H = 1080, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
   const g = cv.getContext("2d"), css = getComputedStyle(document.documentElement);
-  g.fillStyle = "#0b5c7a"; g.fillRect(0, 0, W, H); g.fillStyle = "#08465e"; g.fillRect(0, H - 150, W, 150);
-  const t = (txt, x, y, tam, cor = "#fff", peso = "600") => { g.fillStyle = cor; g.font = `${peso} ${tam}px system-ui, -apple-system, "Segoe UI", sans-serif`; g.fillText(txt, x, y); };
-  const quebra = (txt, x, y, larg, tam, cor, lh) => { g.font = `500 ${tam}px system-ui, sans-serif`; let linha = ""; for (const w of txt.split(" ")) { const tt = linha + w + " "; if (g.measureText(tt).width > larg && linha) { t(linha, x, y, tam, cor, "500"); y += lh; linha = w + " "; } else linha = tt; } t(linha, x, y, tam, cor, "500"); return y; };
-  t(NOME_SITE, 70, 110, 44, "#cde4ee");
+  const FONTE = '"Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif', SUAVE = "rgba(248,250,252,.78)";
+  g.fillStyle = "#0B1220"; g.fillRect(0, 0, W, H); g.fillStyle = "#06B6D4"; g.fillRect(70, 150, 90, 6);
+  const t = (txt, x, y, tam, cor = "#fff", peso = "700") => { g.fillStyle = cor; g.font = `${peso} ${tam}px ${FONTE}`; g.fillText(txt, x, y); };
+  const quebra = (txt, x, y, larg, tam, cor, lh) => { g.font = `400 ${tam}px ${FONTE}`; let linha = ""; for (const w of txt.split(" ")) { const tt = linha + w + " "; if (g.measureText(tt).width > larg && linha) { t(linha, x, y, tam, cor, "400"); y += lh; linha = w + " "; } else linha = tt; } t(linha, x, y, tam, cor, "400"); return y; };
+  t(NOME_SITE, 70, 110, 44, "#F8FAFC", "800");
   t(`Gasto acumulado ${NOME_ENT[c.ent]} em ${c.ano}`, 70, 220, 54);
   const est = contadorInfo ? valorEstimado() : c.total;
   t(BRL.format(est / 100), 70, 380, 100, "#fff", "800");
-  t("ESTIMATIVA · " + MEDIDAS[c.medida].toUpperCase(), 70, 450, 34, "#ffd27a");
+  t("ESTIMATIVA · " + MEDIDAS[c.medida].toUpperCase(), 70, 450, 34, "#06B6D4");
   let y = quebra(`Valor real coletado: ${brl0(c.total)} em ${dataBR(c.coleta.slice(0, 10))}.`, 70, 560, 940, 40, "#fff", 52);
-  if (c.hab) y = quebra(`Por habitante no ano: ${brl(c.total / c.hab)} · por dia: ${brl0(c.total / c.dias)}.`, 70, y + 70, 940, 40, "#cde4ee", 52);
-  quebra("A estimativa sobe em ritmo constante, pela média do ano até a última coleta. Não é dado oficial.", 70, y + 90, 940, 30, "#cde4ee", 40);
-  quebra("Dados do Portal da Transparência oficial. Projeto independente, sem vínculo com a Prefeitura, Câmara ou partidos.", 70, H - 95, 940, 26, "#cde4ee", 34);
+  if (c.hab) y = quebra(`Por habitante no ano: ${brl(c.total / c.hab)} · por dia: ${brl0(c.total / c.dias)}.`, 70, y + 70, 940, 40, SUAVE, 52);
+  quebra("A estimativa sobe em ritmo constante, pela média do ano até a última coleta. Não é dado oficial.", 70, y + 90, 940, 30, SUAVE, 40);
+  quebra("Dados do Portal da Transparência oficial. Projeto independente, sem vínculo com a Prefeitura, Câmara ou partidos.", 70, H - 95, 940, 26, SUAVE, 34);
   t(location.host || "", 70, H - 25, 26, "#fff");
   return cv;
 }
 async function compartilharCartao() {
   if (!ESTADO.compart) return;
+  try { await Promise.all(["400", "700", "800"].map((w) => document.fonts.load(`${w} 40px "Plus Jakarta Sans"`))); } catch (e) { /* sem fonte da marca, usa a do sistema */ }
   const cv = desenhaCartao(), blob = await new Promise((r) => cv.toBlob(r, "image/png"));
   const arq = new File([blob], "contas-de-primavera.png", { type: "image/png" });
   try {

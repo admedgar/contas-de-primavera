@@ -135,6 +135,9 @@ Conferências automáticas: a árvore fecha entre níveis, rubricas mês × ano,
 
 Política padrão `CONTAS_PF=beneficiarios` (`config.PF_POLITICA`): nas listas publicadas de empenhos/fornecedores, **nome, documento e histórico** são omitidos para pagamentos a pessoas que não são fornecedoras (diárias, auxílios financeiros, premiações, sentenças, reembolsos, folha), inclusive quando o favorecido tem CNPJ de microempreendedor com o próprio nome nos elementos 14, 31 e 48. Prestadores de serviço/material (elementos 30, 35, 36, 37, 39, 40, 51, 52) continuam como no portal. Totais não mudam. `CONTAS_PF=portal` publica tudo como o portal; `CONTAS_PF=todos` omite toda pessoa física. Motivo: os históricos oficiais citam pacientes, beneficiários de programas sociais etc.
 
+## Visual (identidade IA Gestão do Futuro)
+O site usa a identidade visual da marca: cores e fonte (Plus Jakarta Sans, hospedada em `web/marca/fonts`, sem CDN) vêm de `web/marca/tokens.css`, e `web/style.css` só mapeia as variáveis do site para esses tokens. Regras completas em `kit-ia/CLAUDE.md`; decisões específicas deste projeto em `CLAUDE.md`. Tema claro apenas; gráficos em azul elétrico e ciano; a logo da marca aparece só como assinatura no rodapé (o nome do site continua "Transparência Primavera"). O visual não toca em coleta, validação, rotas nem dados publicados.
+
 ## Estrutura
 
 ```

@@ -4,7 +4,8 @@ from __future__ import annotations
 from pathlib import Path
 
 NOME = "Transparência Primavera"
-CORES = {"fundo": (11, 92, 122), "texto": (255, 255, 255), "suave": (205, 228, 238), "faixa": (8, 70, 94)}
+# Paleta da marca (web/marca/tokens.css): azul-noite, branco gelo e ciano; "suave" = gelo a 78% sobre o fundo
+CORES = {"fundo": (11, 18, 32), "texto": (248, 250, 252), "suave": (190, 196, 205), "faixa": (6, 182, 212)}
 FONTES = ["/System/Library/Fonts/Helvetica.ttc", "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
           "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
           "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"]
@@ -37,7 +38,7 @@ def gerar(caminho: Path, titulo: str, valor_centavos: int, medida: str, data_br:
     W, H = 1200, 630
     img = Image.new("RGB", (W, H), CORES["fundo"])
     d = ImageDraw.Draw(img)
-    d.rectangle([0, H - 90, W, H], fill=CORES["faixa"])
+    d.rectangle([60, 108, 150, 114], fill=CORES["faixa"])
     f = lambda t: _fonte(ImageFont, t)
     d.text((60, 50), NOME, font=f(40), fill=CORES["suave"])
     d.text((60, 130), titulo, font=f(46), fill=CORES["texto"])

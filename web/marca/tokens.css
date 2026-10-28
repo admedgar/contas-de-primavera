@@ -1,0 +1,49 @@
+/* IA Gestão do Futuro — tokens da marca (fonte única de cores e tipografia).
+   Importe este arquivo uma vez, no ponto de entrada de estilos do sistema.
+   Ajuste apenas os caminhos de url() das fontes conforme a pasta pública do projeto. */
+
+@font-face{font-family:'Plus Jakarta Sans';font-weight:400;font-style:normal;font-display:swap;src:url('./fonts/font-jakarta-400.woff2') format('woff2')}
+@font-face{font-family:'Plus Jakarta Sans';font-weight:600;font-style:normal;font-display:swap;src:url('./fonts/font-jakarta-600.woff2') format('woff2')}
+@font-face{font-family:'Plus Jakarta Sans';font-weight:700;font-style:normal;font-display:swap;src:url('./fonts/font-jakarta-700.woff2') format('woff2')}
+@font-face{font-family:'Plus Jakarta Sans';font-weight:800;font-style:normal;font-display:swap;src:url('./fonts/font-jakarta-800.woff2') format('woff2')}
+
+:root{
+  /* Paleta oficial (guia da marca) */
+  --ia-noite:#0B1220;      /* fundo de destaque, títulos, navegação */
+  --ia-azul:#2563EB;       /* cor principal: botões e links */
+  --ia-ciano:#06B6D4;      /* pequenos destaques; texto sobre ciano sempre em --ia-noite */
+  --ia-gelo:#F8FAFC;       /* fundo das áreas de conteúdo */
+  --ia-ardosia:#64748B;    /* textos de apoio */
+
+  /* Derivados (apoio de interface; não são novas cores de marca) */
+  --ia-azul-hover:#1D4ED8;
+  --ia-linha:#E2E8F0;
+  --ia-branco:#FFFFFF;
+
+  /* Estados funcionais, para formulários e avisos de sistema */
+  --ia-sucesso:#15803D;
+  --ia-alerta:#B45309;
+  --ia-erro:#B91C1C;
+
+  /* Semântica */
+  --ia-bg:var(--ia-gelo);
+  --ia-surface:var(--ia-branco);
+  --ia-text:var(--ia-noite);
+  --ia-muted:var(--ia-ardosia);
+  --ia-primary:var(--ia-azul);
+  --ia-focus:var(--ia-ciano);
+
+  /* Forma e tipografia */
+  --ia-font:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --ia-radius-sm:8px;
+  --ia-radius:12px;
+  --ia-radius-lg:16px;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-font-smoothing:antialiased}
+body{margin:0;background:var(--ia-bg);color:var(--ia-text);font-family:var(--ia-font);line-height:1.6}
+h1,h2,h3,h4{font-family:var(--ia-font);font-weight:800;letter-spacing:-.02em;line-height:1.15;color:var(--ia-noite)}
+a{color:var(--ia-azul)}
+:focus-visible{outline:3px solid var(--ia-focus);outline-offset:3px;border-radius:4px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
