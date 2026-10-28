@@ -125,3 +125,13 @@ ul.limpo{padding-left:20px}ul.limpo li{margin:5px 0}
 .assinatura img{height:34px;width:auto;display:block}
 @media (min-width:720px){th,td{padding:11px 14px}}
 @media (max-width:719px){.topo{position:static}}
+
+/* Aba Relatório */
+.cartao-rel{display:block;text-decoration:none;color:inherit}
+.cartao-rel:hover{border-color:#BFD2FB}
+.selo-ia{background:var(--info-fundo);border:1px solid var(--info-borda);border-radius:var(--ia-radius-sm);padding:10px 14px;margin:0 0 14px;font-size:.9rem}
+.selo-ia.selo-modelo{background:var(--aviso-fundo);border-color:var(--aviso-borda)}
+.resumo-ia .resumo-txt{font-size:1.08rem;margin:6px 0 10px}
+.compartilhar-claro{margin-top:18px}
+.compartilhar-claro a{border-color:var(--ia-azul);color:var(--ia-azul)}
+.compartilhar-claro a:hover{background:#EEF4FF;border-color:var(--ia-azul)}

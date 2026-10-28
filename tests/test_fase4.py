@@ -1,4 +1,5 @@
 import json
+import os
 import tempfile
 import unittest
 import xml.etree.ElementTree as ET
@@ -10,6 +11,10 @@ from contas import alertas as alr, cli, config, db, notificar, site, validar
 
 CFG = dict(alr.PADRAO, janela_dias=45)
 HOJE = date(2026, 10, 6)             # terça-feira
+
+
+def setUpModule():
+    os.environ["CONTAS_SEM_IA"] = "1"      # os testes de diario() nunca chamam a IA, mesmo que haja chave no ambiente
 
 
 class Base(unittest.TestCase):

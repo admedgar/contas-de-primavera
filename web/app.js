@@ -435,7 +435,8 @@ async function paginaMetodologia() {
      <li><strong>Custo da Câmara</strong>: despesa da Câmara (empenhado, liquidado ou pago) ÷ população; e ÷ receita corrente arrecadada da Prefeitura no mesmo ano. O repasse (duodécimo) vem da consulta de transferências da Prefeitura, que registra os dois sentidos (repasse e devolução).</li>
      <li><strong>Ficha e comparativo dos vereadores</strong> (mesmos critérios para todos): <em>mês de exercício</em> = mês com proventos na folha; <em>proventos</em> = soma da folha; <em>diárias</em> = valor líquido das diárias pagas ao vereador; <em>verba indenizatória</em> = empenhos do elemento “93 – Indenizações e restituições” cujo histórico cita “verba indenizatória”, pagos ao vereador, por <em>mês do empenho</em> (a data do pagamento não está na consulta usada); <em>reembolsos</em> = demais empenhos do elemento 93 pagos ao vereador. As médias mensais dividem o total pelos meses de exercício. Encargos patronais, auxílios e passagens não entram no comparativo. O comparativo é listado em ordem alfabética.</li>
      <li><strong>Quem é o vereador num pagamento</strong>: o favorecido é ligado ao vereador quando o CPF mascarado e o nome são idênticos (ignorando acentos e espaços) ou por decisão registrada pelos responsáveis do projeto. Casos duvidosos ficam de fora até serem decididos.</li>
-     <li><strong>Privacidade de pessoas físicas</strong>: nas listas de empenhos e fornecedores, nome, documento e histórico de pessoas físicas são omitidos quando o pagamento não é compra ou prestação de serviço (diárias, auxílios financeiros, sentenças judiciais, premiações, reembolsos, folha). Isso vale também para quem tem CNPJ de microempreendedor com o próprio nome nesses casos. Os valores continuam somados nos totais. Vereadores identificados seguem nominais. O portal oficial continua sendo a fonte completa.</li>
+     <li><strong>Relatório da semana e do mês</strong>: todos os números são calculados pelo sistema, sem IA, a partir dos empenhos que o portal registra (por data de empenho) e dos totais mensais do portal, sempre até a data do último empenho registrado. Em períodos em andamento, a comparação usa a mesma janela de dias do período anterior. O texto de abertura é redigido por IA (Claude, da Anthropic) a partir de uma ficha com esses números já formatados; um verificador automático descarta o texto se ele citar número que não esteja na ficha ou usar palavra de juízo de valor, e nesse caso entra um modelo de texto fixo, rotulado como “sem IA”. Pessoas físicas nunca são nomeadas, e pagamentos em nome da própria instituição (como a folha) ficam fora da lista de maiores empenhos.</li>
+    <li><strong>Privacidade de pessoas físicas</strong>: nas listas de empenhos e fornecedores, nome, documento e histórico de pessoas físicas são omitidos quando o pagamento não é compra ou prestação de serviço (diárias, auxílios financeiros, sentenças judiciais, premiações, reembolsos, folha). Isso vale também para quem tem CNPJ de microempreendedor com o próprio nome nesses casos. Os valores continuam somados nos totais. Vereadores identificados seguem nominais. O portal oficial continua sendo a fonte completa.</li>
      <li><strong>Passagens aéreas</strong>: o favorecido é a agência. Só aparecem na ficha quando o histórico oficial cita um único passageiro pelo nome completo do vereador; as demais não são atribuíveis.</li></ul>` +
     atualizacaoHtml + `<h3>Limites dos dados</h3><ul class="limpo"><li>Os dados dependem do que o portal oficial publica e podem sofrer atraso de lançamento. O mês corrente é sempre parcial.</li><li>Nota fiscal, ordens de pagamento e itens de cada empenho não são exibidos aqui; estão no portal oficial.</li><li>CPFs aparecem mascarados, exatamente como na fonte. Dados bancários de fornecedores nunca são coletados.</li><li>O detalhamento de como cada vereador gastou a verba indenizatória não está disponível nos dados abertos e ainda não consta deste site.</li></ul>` +
     `<p class="sub">Gerado em ${dataHoraBR(meta.gerado_em)}. Projeto independente, sem vínculo com a Prefeitura, Câmara ou partidos.</p>`;
@@ -444,7 +445,7 @@ async function paginaMetodologia() {
 
 /* ---------- Roteador ---------- */
 async function rota() {
-  const [, pag = "prefeitura", sec, extra] = (location.hash || "#/prefeitura").split("/");
+  const [, pag = "prefeitura", sec, extra, extra2] = (location.hash || "#/prefeitura").split("/");
   document.querySelectorAll(".nav-principal a").forEach((a) => {
     if (a.dataset.pag === pag) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
   });
@@ -453,6 +454,7 @@ async function rota() {
     if (pag === "entenda") paginaEntenda();
     else if (pag === "metodologia") await paginaMetodologia();
     else if (pag === "novidades") await paginaNovidades();
+    else if (pag === "relatorio") await paginaRelatorio(sec, extra, extra2);
     else await paginaEntidade(pag === "camara" ? "camara" : "prefeitura", sec, extra);
   } catch (e) { $("#pagina").innerHTML = `<div class="aviso-caixa">Erro ao carregar: ${esc(e.message)}</div>`; }
   window.scrollTo({ top: 0 });

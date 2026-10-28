@@ -1,2 +1,3 @@
-# Opcional: só para gerar a imagem de prévia (og.png) no build. O resto do projeto usa apenas a biblioteca padrão do Python.
-pillow>=10.1
+# Opcionais. O resto do projeto usa apenas a biblioteca padrão do Python.
+pillow>=10.1          # imagem de prévia (og.png) no build
+anthropic>=0.125      # texto por IA dos relatórios semanal/mensal (só é usado se ANTHROPIC_API_KEY existir)

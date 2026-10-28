@@ -7,6 +7,7 @@
   alertas                          detecta novos registros acima dos limites e publica alertas.json/alertas.xml
   notificar                        envia os alertas novos ao webhook (se ALERTA_WEBHOOK_URL definido)
   build    [--saida dist]          monta o site pronto para hospedar (metadados, cartão de compartilhamento, status)
+  relatorio [--sem-ia]             gera os relatórios da semana e do mês (números por código; texto por IA se houver ANTHROPIC_API_KEY)
   republicar --de PASTA [--saida dist]
                                    monta o site com o visual/código atuais sobre os DADOS do site já publicado em PASTA (sem coletar)
   diario   [--entidade E|todas] [--completo]
@@ -18,6 +19,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 import time
 from datetime import date
@@ -207,6 +209,12 @@ def diario(conn, entidades, completo=False, force=False) -> int:
             if ent == "prefeitura":
                 print("Receitas:", pubr.publicar_receitas(conn))
         alr.publicar_alertas(conn, url_site=_site().get("url_site"))
+        try:                                                    # relatório semanal/mensal: nunca impede a atualização dos dados
+            from . import publicar_relatorios as pubrel, relatorio as rel
+            print("Relatórios:", rel.gerar(conn, usar_ia=os.environ.get("CONTAS_SEM_IA") != "1"))
+            pubrel.publicar_relatorios(conn)
+        except Exception:
+            logging.getLogger(__name__).exception("relatórios não gerados (o restante foi publicado normalmente)")
         print(f"JSONs publicados em {config.WEB_DATA}; {len(novos_total)} alerta(s) novo(s) nesta execução")
     (config.RAIZ / "data").mkdir(exist_ok=True)
     (config.RAIZ / "data" / "alertas_novos.json").write_text(
@@ -223,7 +231,7 @@ def _site() -> dict:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="contas", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("comando", choices=["iniciar", "coletar", "derivar", "validar", "publicar", "alertas", "notificar", "build", "republicar", "diario"])
+    ap.add_argument("comando", choices=["iniciar", "coletar", "derivar", "validar", "publicar", "alertas", "notificar", "build", "republicar", "relatorio", "diario"])
     ap.add_argument("--entidade", default=None, choices=list(config.ENTIDADES) + ["todas"])
     ap.add_argument("--anos", nargs="*", type=int)
     ap.add_argument("--so", nargs="*", choices=sorted(set(FONTES_ANO) | set(FONTES_ENTIDADE) | set(FONTES_ENTIDADE_PREFEITURA) | set(FONTES_ANO_CAMARA) | {"ibge"}))
@@ -231,6 +239,7 @@ def main(argv=None) -> int:
     ap.add_argument("--completo", action="store_true", help="diario: revisa também os anos fechados da janela")
     ap.add_argument("--saida", default=None, help="build: pasta de saída (padrão dist/)")
     ap.add_argument("--de", default=None, help="republicar: pasta do site já publicado (com data/)")
+    ap.add_argument("--sem-ia", action="store_true", help="relatorio: não chama a IA (usa o modelo fixo)")
     ap.add_argument("--db", default=None)
     a = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -250,6 +259,9 @@ def main(argv=None) -> int:
     if a.comando == "build":
         from . import site
         print(site.montar(conn, a.saida)); return 0
+    if a.comando == "relatorio":
+        from . import publicar_relatorios as pubrel, relatorio
+        print("Relatórios:", relatorio.gerar(conn, usar_ia=not a.sem_ia), "| publicados:", len(pubrel.publicar_relatorios(conn)["itens"]), "entidades"); return 0
     if a.comando == "republicar":
         from . import site
         if not a.de:

@@ -101,6 +101,9 @@ jobs:
 
       - name: Coletar, conferir, registrar alertas e gerar JSONs
         id: diario
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}   # opcional: com a chave, o texto dos relatórios semanal/mensal é escrito por IA
+          RELATORIO_MODELO: ${{ vars.RELATORIO_MODELO }}        # opcional: padrão claude-opus-5-5
         run: |
           set +e
           if [ "${{ inputs.so_visual }}" = "true" ]; then
