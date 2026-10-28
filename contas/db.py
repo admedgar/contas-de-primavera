@@ -190,11 +190,11 @@ CREATE TABLE IF NOT EXISTS emenda_recebida (
   entidade TEXT NOT NULL, numero TEXT NOT NULL, ano INTEGER, esfera TEXT, tipo TEXT, transferencia TEXT, autor TEXT,
   valor_total INTEGER, receita_ano_anterior INTEGER, receita INTEGER, empenhado INTEGER, pago INTEGER,
   PRIMARY KEY (entidade, numero));
--- ===== Relatórios resumidos (semana/mês) =====
+-- ===== Relatórios mensais =====
 -- fatos = números calculados por código (JSON); texto = resumo (JSON) escrito pela IA ou, sem IA, pelo modelo fixo ('origem').
 CREATE TABLE IF NOT EXISTS relatorio (
-  entidade TEXT NOT NULL, tipo TEXT NOT NULL,          -- 'semana' | 'mes'
-  chave TEXT NOT NULL,                                 -- 'AAAA-Www' | 'AAAA-MM'
+  entidade TEXT NOT NULL, tipo TEXT NOT NULL,          -- 'mes'
+  chave TEXT NOT NULL,                                 -- 'AAAA-MM'
   fatos TEXT NOT NULL, texto TEXT NOT NULL,
   origem TEXT NOT NULL,                                -- 'ia' | 'modelo'
   modelo TEXT, hash TEXT NOT NULL, gerado_em TEXT NOT NULL,

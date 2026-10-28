@@ -7,7 +7,7 @@
   alertas                          detecta novos registros acima dos limites e publica alertas.json/alertas.xml
   notificar                        envia os alertas novos ao webhook (se ALERTA_WEBHOOK_URL definido)
   build    [--saida dist]          monta o site pronto para hospedar (metadados, cartão de compartilhamento, status)
-  relatorio [--sem-ia]             gera os relatórios da semana e do mês (números por código; texto por IA se houver ANTHROPIC_API_KEY)
+  relatorio [--sem-ia]             gera os relatórios mensais (números por código; texto por IA se houver ANTHROPIC_API_KEY)
   republicar --de PASTA [--saida dist]
                                    monta o site com o visual/código atuais sobre os DADOS do site já publicado em PASTA (sem coletar)
   diario   [--entidade E|todas] [--completo]
@@ -209,7 +209,7 @@ def diario(conn, entidades, completo=False, force=False) -> int:
             if ent == "prefeitura":
                 print("Receitas:", pubr.publicar_receitas(conn))
         alr.publicar_alertas(conn, url_site=_site().get("url_site"))
-        try:                                                    # relatório semanal/mensal: nunca impede a atualização dos dados
+        try:                                                    # relatório mensal: nunca impede a atualização dos dados
             from . import publicar_relatorios as pubrel, relatorio as rel
             print("Relatórios:", rel.gerar(conn, usar_ia=os.environ.get("CONTAS_SEM_IA") != "1"))
             pubrel.publicar_relatorios(conn)

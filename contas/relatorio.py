@@ -1,4 +1,4 @@
-"""Relatórios resumidos da semana e do mês (Prefeitura e Câmara).
+"""Relatórios mensais (Prefeitura e Câmara): cada relatório cobre do dia 1 ao último dia do mês, com base no que o portal já registrou.
 
 Regra de ouro: TODOS os números são calculados aqui, por código, a partir do banco (o que o portal informou). A IA só escreve o
 texto a partir de uma "ficha" já formatada, e o que ela escrever é verificado: qualquer número que não conste da ficha, qualquer
@@ -20,12 +20,10 @@ from .coleta.camara import eh_vereador
 
 log = logging.getLogger(__name__)
 
-SEMANAS_HISTORICO = 4          # semanas (além da corrente) geradas/mantidas
-MESES_HISTORICO = 3
+MESES_HISTORICO = 5          # meses anteriores (além do corrente) gerados/mantidos
 MODELO_PADRAO = "claude-opus-5-5"
 NOMES = {"prefeitura": "Prefeitura", "camara": "Câmara"}
-MIN_DIAS_SEMANA = 3            # período corrente só é o principal quando já tem este número de dias com registro
-MIN_DIAS_MES = 8
+MIN_DIAS_MES = 8              # o mês corrente só é o principal quando já tem este número de dias com registro
 JUIZO = ("absurd", "exorbitan", "excessiv", "suspeit", "irregular", "ilegal", "escândalo", "escandalo", "desvio", "superfatur",
          "corrup", "gastança", "gastanca", "abusiv", "vergonh", "preocupante", "alarmante", "culpa", "roubo", "mau uso", "malversa")
 
@@ -75,12 +73,6 @@ MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "a
 # ---------------------------------------------------------------- períodos
 
 
-def semana_iso(d: date):
-    ano, sem, _ = d.isocalendar()
-    ini = date.fromisocalendar(ano, sem, 1)
-    return f"{ano}-W{sem:02d}", ini, ini + timedelta(days=6)
-
-
 def mes_de(d: date):
     ini = d.replace(day=1)
     prox = (ini + timedelta(days=32)).replace(day=1)
@@ -88,15 +80,9 @@ def mes_de(d: date):
 
 
 def periodos(ref: date):
-    """Períodos a gerar para a data de referência do portal: semana corrente + N anteriores, mês corrente + N anteriores."""
-    out = []
-    _, ini, _ = semana_iso(ref)
-    for i in range(SEMANAS_HISTORICO + 1):
-        d = ini - timedelta(days=7 * i)
-        ch, a, b = semana_iso(d)
-        out.append(("semana", ch, a, b))
-    d = ref.replace(day=1)
-    for i in range(MESES_HISTORICO + 1):
+    """Meses a gerar para a data de referência do portal: o mês dela (dia 1 até hoje) e os anteriores."""
+    out, d = [], ref.replace(day=1)
+    for _ in range(MESES_HISTORICO + 1):
         ch, a, b = mes_de(d)
         out.append(("mes", ch, a, b))
         d = (a - timedelta(days=1)).replace(day=1)
@@ -104,9 +90,7 @@ def periodos(ref: date):
 
 
 def rotulo(tipo: str, ini: date, fim: date, chave: str) -> str:
-    if tipo == "mes":
-        return f"{MESES[ini.month - 1].capitalize()} de {ini.year}"
-    return f"Semana de {dcurto(ini.isoformat())} a {dbr(fim.isoformat())}"
+    return f"{MESES[ini.month - 1].capitalize()} de {ini.year}"
 
 
 def referencia_portal(conn, entidade: str, hoje: date | None = None):
@@ -133,10 +117,7 @@ def _soma_emp(conn, ent, ini: date, fim: date):
 
 
 def _anterior(tipo: str, ini: date, ate: date):
-    """Mesma janela do período anterior, com o mesmo número de dias decorridos (comparação justa em período parcial)."""
-    if tipo == "semana":
-        pi = ini - timedelta(days=7)
-        return pi, pi + (ate - ini)
+    """Mesma janela do mês anterior (dia 1 até o mesmo dia do mês), para comparar parcial com parcial."""
     pf = ini - timedelta(days=1)
     pi = pf.replace(day=1)
     return pi, min(pf, pi + (ate - ini))
@@ -197,7 +178,7 @@ def fatos(conn, ent: str, tipo: str, chave: str, ini: date, fim: date, ref: date
     e_ant, n_ant = _soma_emp(conn, ent, pi, pf)
     f["comparacao"] = {"inicio": pi.isoformat(), "fim": pf.isoformat(), "empenhado": e_ant, "qtd": n_ant,
                        "variacao_pct": round((tot - e_ant) / e_ant * 100, 1) if e_ant > 0 else None}
-    if tipo == "mes":
+    if True:
         def oficial(ano, mes):
             r = conn.execute("SELECT SUM(empenhado) e, SUM(liquidado) l, SUM(pago) p, COUNT(*) n FROM mensal_orgao WHERE entidade=? AND exercicio=? AND mes=?",
                              (ent, ano, mes)).fetchone()
@@ -445,6 +426,8 @@ def gerar(conn, entidades=None, hoje: date | None = None, cliente=None, usar_ia:
     ia_disponivel = usar_ia and (cliente is not None or _cliente() is not None)
     cli = cliente or (_cliente() if usar_ia else None)
     cont = {"gerados": 0, "ia": 0, "modelo_fixo": 0, "mantidos": 0}
+    conn.execute("DELETE FROM relatorio WHERE tipo<>'mes'")      # relatórios semanais de versões anteriores deixaram de existir
+    conn.commit()
     for ent in (entidades or config.ENTIDADES):
         ref = referencia_portal(conn, ent, hoje)
         if not ref:

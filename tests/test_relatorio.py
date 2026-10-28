@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 from contas import db, publicar_relatorios as pubrel, relatorio as rel
 
-HOJE = date(2026, 10, 7)          # quarta-feira (semana ISO 41: 05/10 a 11/10)
+HOJE = date(2026, 10, 7)          # o portal tem dados até 07/10: outubro está em andamento (1º a 7)
 
 
 class FakeIA:
@@ -33,8 +33,8 @@ class Base(unittest.TestCase):
                                    ("3", "PREFEITURA MUNICIPAL DE PRIMAVERA DO LE", "01.974.088/0001-05", "cnpj")):
             self.conn.execute("INSERT INTO fornecedor VALUES ('prefeitura',?,?,?,?)", (cod, nome, doc, tp))
         self.n = 0
-        # semana anterior (28/09 a 02/10) e semana corrente (05/10 a 07/10)
-        self.emp(1000, "1", data="2026-09-29"); self.emp(1000, "1", data="2026-09-30")
+        # setembro (mês anterior): 1.000 no dia 3 (dentro da janela 1º a 7) e 1.000 no dia 30 (fora dela); outubro: 5 a 7
+        self.emp(1000, "1", data="2026-09-03"); self.emp(1000, "1", data="2026-09-30")
         self.emp(2000, "1", data="2026-10-05", modalidade="DISPENSA"); self.emp(500, "2", data="2026-10-05", elemento="48")
         self.emp(9000, "3", data="2026-10-06", elemento="11")            # folha em nome da própria Prefeitura
         self.emp(-300, "1", tipo="AN", data="2026-10-07")
@@ -49,7 +49,7 @@ class Base(unittest.TestCase):
 
 
 class Fatos(Base):
-    def f(self, tipo="semana", chave="2026-W41", ini=date(2026, 10, 5), fim=date(2026, 10, 11)):
+    def f(self, tipo="mes", chave="2026-10", ini=date(2026, 10, 1), fim=date(2026, 10, 31)):
         return rel.fatos(self.conn, "prefeitura", tipo, chave, ini, fim, rel.referencia_portal(self.conn, "prefeitura", HOJE))
 
     def test_referencia_e_total_com_anulacao(self):
@@ -62,11 +62,23 @@ class Fatos(Base):
         self.assertEqual(f["emissao"]["qtd"], 3)              # AN não conta como empenho emitido
         self.assertEqual(f["dias_com_registro"], 3)
 
-    def test_comparacao_mesmos_dias_da_semana_anterior(self):
+    def test_comparacao_mesmos_dias_do_mes_anterior(self):
         c = self.f()["comparacao"]
-        self.assertEqual((c["inicio"], c["fim"]), ("2026-09-28", "2026-09-30"))
-        self.assertEqual(c["empenhado"], 200000)
-        self.assertEqual(c["variacao_pct"], round((1120000 - 200000) / 200000 * 100, 1))
+        self.assertEqual((c["inicio"], c["fim"]), ("2026-09-01", "2026-09-07"))      # 1º a 7 de outubro x 1º a 7 de setembro
+        self.assertEqual(c["empenhado"], 100000)
+        self.assertEqual(c["variacao_pct"], round((1120000 - 100000) / 100000 * 100, 1))
+
+    def test_mes_fechado_compara_mes_inteiro(self):
+        f = rel.fatos(self.conn, "prefeitura", "mes", "2026-09", date(2026, 9, 1), date(2026, 9, 30), date(2026, 10, 7))
+        self.assertFalse(f["parcial"])
+        self.assertEqual(f["emissao"]["empenhado"], 200000)
+        self.assertEqual(f["dias_com_registro"], 2)
+
+    def test_periodos_sao_meses_a_partir_do_dia_1(self):
+        ps = rel.periodos(date(2026, 1, 15))
+        self.assertEqual(ps[0], ("mes", "2026-01", date(2026, 1, 1), date(2026, 1, 31)))
+        self.assertEqual(ps[1][1:], ("2025-12", date(2025, 12, 1), date(2025, 12, 31)))
+        self.assertTrue(all(p[0] == "mes" and p[2].day == 1 for p in ps))
 
     def test_pessoa_fisica_nunca_nomeada_e_ente_fora_dos_maiores(self):
         f = self.f()
@@ -79,11 +91,11 @@ class Fatos(Base):
         self.assertEqual(f["maiores"][0]["fornecedor"], "EMPRESA GRANDE LTDA")
 
     def test_mes_traz_total_oficial_do_portal(self):
-        f = self.f("mes", "2026-10", date(2026, 10, 1), date(2026, 10, 31))
+        f = self.f()
         self.assertEqual(f["oficial_mes"]["mes"], {"empenhado": 123400, "liquidado": 50000, "pago": 40000})
 
     def test_periodo_sem_dados_devolve_none(self):
-        self.assertIsNone(rel.fatos(self.conn, "prefeitura", "semana", "2026-W30", date(2026, 7, 20), date(2026, 7, 26), date(2026, 10, 7)))
+        self.assertIsNone(rel.fatos(self.conn, "prefeitura", "mes", "2026-07", date(2026, 7, 1), date(2026, 7, 31), date(2026, 10, 7)))
 
     def test_formatacao(self):
         self.assertEqual(rel.compacto(320000000), "R$ 3,2 milhões")
@@ -132,7 +144,7 @@ class Diarias(Base):
 class Verificacao(Base):
     def setUp(self):
         super().setUp()
-        self.f = rel.fatos(self.conn, "prefeitura", "semana", "2026-W41", date(2026, 10, 5), date(2026, 10, 11), date(2026, 10, 7))
+        self.f = rel.fatos(self.conn, "prefeitura", "mes", "2026-10", date(2026, 10, 1), date(2026, 10, 31), date(2026, 10, 7))
         self.fich = rel.ficha(self.f)
         self.ok = {"titulo": "Semana", "resumo": f"O portal registra {self.fich['empenhado_liquido_no_periodo']} empenhados.",
                    "pontos": ["Um ponto."], "observacoes": ["Limites."]}
@@ -167,7 +179,7 @@ class Geracao(Base):
     def test_com_ia_aprovada(self):
         ia = FakeIA(*[self.BOM] * 20)
         self.gera(ia)
-        r = self.conn.execute("SELECT origem, modelo FROM relatorio WHERE chave='2026-W41'").fetchone()
+        r = self.conn.execute("SELECT origem, modelo FROM relatorio WHERE chave='2026-10'").fetchone()
         self.assertEqual((r["origem"], r["modelo"]), ("ia", rel.MODELO_PADRAO))
 
     def test_ia_reprovada_duas_vezes_cai_no_modelo_fixo(self):
@@ -196,6 +208,11 @@ class Geracao(Base):
         c = self.gera(None, usar_ia=False)
         self.assertGreaterEqual(c["gerados"], 1)
 
+    def test_relatorios_semanais_antigos_sao_removidos(self):
+        self.conn.execute("INSERT INTO relatorio VALUES ('prefeitura','semana','2026-W41','{}','{}','modelo',NULL,'x','2026-10-07T00:00:00Z')")
+        self.gera(None, usar_ia=False)
+        self.assertEqual(self.conn.execute("SELECT COUNT(*) FROM relatorio WHERE tipo='semana'").fetchone()[0], 0)
+
     def test_texto_do_modelo_fixo_e_trocado_quando_a_ia_aparece(self):
         self.gera(None, usar_ia=False)
         self.gera(FakeIA(*[self.BOM] * 40))
@@ -207,9 +224,10 @@ class Publicacao(Base):
         rel.gerar(self.conn, ["prefeitura"], hoje=HOJE, usar_ia=False)
         saida = Path(self.tmp.name) / "web_data"
         idx = pubrel.publicar_relatorios(self.conn, saida)
-        self.assertIn("2026-W41", [i["chave"] for i in idx["itens"]["prefeitura"]["semana"]])
-        self.assertEqual(idx["padrao"]["prefeitura"]["semana"], "2026-W41")      # 3 dias com registro: a corrente já é a principal
-        corpo = json.loads((saida / "relatorios" / "prefeitura_semana_2026-W41.json").read_text(encoding="utf-8"))
+        self.assertIn("2026-10", [i["chave"] for i in idx["itens"]["prefeitura"]["mes"]])
+        self.assertNotIn("semana", idx["itens"]["prefeitura"])
+        self.assertEqual(idx["padrao"]["prefeitura"]["mes"], "2026-09")          # outubro só tem 3 dias com registro: o principal é setembro, completo
+        corpo = json.loads((saida / "relatorios" / "prefeitura_mes_2026-10.json").read_text(encoding="utf-8"))
         self.assertEqual(corpo["origem"], "modelo")
         self.assertIn("resumo", corpo["texto"])
         self.assertFalse(idx["ia_em_uso"])

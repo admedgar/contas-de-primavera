@@ -1,4 +1,4 @@
-"""Publica os relatórios (semana/mês) do banco em web/data/relatorios/. O site só lê estes JSONs."""
+"""Publica os relatórios mensais do banco em web/data/relatorios/. O site só lê estes JSONs."""
 from __future__ import annotations
 
 import json
@@ -6,9 +6,8 @@ from pathlib import Path
 
 from . import config, db
 from .publicar import LINKS_PORTAL, _grava
-from .relatorio import MIN_DIAS_MES, MIN_DIAS_SEMANA
+from .relatorio import MIN_DIAS_MES
 
-PUBLICAR_SEMANAS = 12
 PUBLICAR_MESES = 12
 
 
@@ -18,7 +17,7 @@ def publicar_relatorios(conn, saida: Path | None = None) -> dict:
     for ent in config.ENTIDADES:
         itens[ent], padrao[ent] = {}, {}
         coleta = conn.execute("SELECT fim FROM execucao_coleta WHERE entidade=? AND fonte='despesas_gerais' AND status='ok' ORDER BY id DESC LIMIT 1", (ent,)).fetchone()
-        for tipo, limite in (("semana", PUBLICAR_SEMANAS), ("mes", PUBLICAR_MESES)):
+        for tipo, limite in (("mes", PUBLICAR_MESES),):
             rows = conn.execute("SELECT * FROM relatorio WHERE entidade=? AND tipo=? ORDER BY chave DESC LIMIT ?", (ent, tipo, limite)).fetchall()
             lista = []
             for r in rows:
@@ -31,8 +30,8 @@ def publicar_relatorios(conn, saida: Path | None = None) -> dict:
             itens[ent][tipo] = lista
             if lista:
                 atual = lista[0]
-                # período corrente com pouco dado (início da semana/do mês) não é o principal: mostra o último completo
-                minimo = MIN_DIAS_SEMANA if tipo == "semana" else MIN_DIAS_MES
+                # mês corrente com pouco dado (início do mês) não é o principal: mostra o último mês completo
+                minimo = MIN_DIAS_MES
                 usar = 1 if (atual["parcial"] and atual["dias"] < minimo and len(lista) > 1) else 0
                 padrao[ent][tipo] = lista[usar]["chave"]
     idx = {"gerado_em": db.agora(), "itens": itens, "padrao": padrao,

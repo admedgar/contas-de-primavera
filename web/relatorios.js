@@ -1,15 +1,14 @@
-/* Aba "Relatório": resumo da semana e do mês de cada instituição. Os números vêm de data/relatorios/*.json (calculados por código);
+/* Aba "Relatório": resumo mensal (dia 1 ao fim do mês) de cada instituição. Os números vêm de data/relatorios/*.json (calculados por código);
    o texto de abertura é escrito por IA (ou, se a IA não estiver ativa, por um modelo fixo) e vem rotulado. Usa funções de app.js. */
 "use strict";
 
-const REL = { ent: "prefeitura", tipo: "semana", chave: null };
+const REL = { ent: "prefeitura", chave: null };
 const NOME_INST = { prefeitura: "Prefeitura", camara: "Câmara" };
-const NOME_TIPO = { semana: "Semana", mes: "Mês" };
 const pct1 = (x) => Math.abs(x).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const pctTxt = (x) => (x == null ? "—" : (x >= 0 ? "+" : "−") + pct1(x) + "%");
 
 function cartaoPanorama(ent, tipo, r) {
-  if (!r) return `<div class="card"><div class="k">${NOME_INST[ent]} · ${NOME_TIPO[tipo]}</div><div class="p">Sem dados ainda.</div></div>`;
+  if (!r) return `<div class="card"><div class="k">${NOME_INST[ent]} · mês</div><div class="p">Sem dados ainda.</div></div>`;
   const f = r.fatos, c = f.comparacao;
   return `<a class="card cartao-rel" href="#/relatorio/${ent}/${tipo}/${esc(f.chave)}">
     <div class="k">${NOME_INST[ent]} · ${esc(f.rotulo)}${f.parcial ? " (parcial)" : ""}</div>
@@ -82,39 +81,33 @@ async function paginaRelatorio(ent, tipo, chave) {
   await usaEntidade(ent === "camara" ? "camara" : "prefeitura");           // inicia os contadores do topo, como nas outras abas
   let idx;
   try { idx = await carregar("relatorios/index.json"); }
-  catch (e) { $("#pagina").innerHTML = `<h2>Relatório da semana e do mês</h2><div class="aviso-caixa">Os relatórios ainda não foram gerados. Eles aparecem aqui após a próxima atualização dos dados.</div>`; return; }
-  if (ent !== "camara" && ent !== "prefeitura") { ent = null; }
-  if (ent) { REL.ent = ent; REL.tipo = tipo === "mes" ? "mes" : "semana"; REL.chave = chave || null; }
-  const lista = (idx.itens[REL.ent] || {})[REL.tipo] || [];
-  const escolhida = lista.find((i) => i.chave === REL.chave) ? REL.chave : (idx.padrao[REL.ent] || {})[REL.tipo];
-  const nav = (e2, t2, c2) => `#/relatorio/${e2}/${t2}/${c2 || ""}`;
-  let h = `<h2>Relatório da semana e do mês</h2><p class="sub">Resumo do que o portal registrou, em linguagem simples, para a Prefeitura e para a Câmara. O texto é redigido por inteligência artificial; os números são calculados pelo sistema a partir do Portal da Transparência, sempre até a data da última atualização do portal.</p>`;
+  catch (e) { $("#pagina").innerHTML = `<h2>Relatório mensal</h2><div class="aviso-caixa">Os relatórios ainda não foram gerados. Eles aparecem aqui após a próxima atualização dos dados.</div>`; return; }
+  if (ent !== "camara" && ent !== "prefeitura") ent = null;
+  // links antigos (semana) caem no mês; a chave só vale se for um mês publicado
+  if (ent) { REL.ent = ent; REL.chave = /^\d{4}-\d{2}$/.test(chave || "") ? chave : (tipo && /^\d{4}-\d{2}$/.test(tipo) ? tipo : null); }
+  const lista = (idx.itens[REL.ent] || {}).mes || [];
+  const escolhida = lista.find((i) => i.chave === REL.chave) ? REL.chave : (idx.padrao[REL.ent] || {}).mes;
+  const nav = (e2, c2) => `#/relatorio/${e2}/mes/${c2 || ""}`;
+  let h = `<h2>Relatório mensal</h2><p class="sub">Resumo, em linguagem simples, do que o portal registrou em cada mês na Prefeitura e na Câmara: sempre do dia 1º até o último dia do mês (ou até a última atualização do portal, quando o mês ainda está em andamento). O texto é redigido por inteligência artificial; os números são calculados pelo sistema a partir do Portal da Transparência.</p>`;
   if (!ent) {                                                          // panorama (sem instituição escolhida)
-    const par = [];
-    for (const e2 of ["prefeitura", "camara"]) for (const t2 of ["semana", "mes"]) {
-      const ch = (idx.padrao[e2] || {})[t2];
-      par.push(ch ? carregar(`relatorios/${e2}_${t2}_${ch}.json`).catch(() => null) : Promise.resolve(null));
-    }
-    const rs = await Promise.all(par);
-    h += `<div class="grade">${["prefeitura", "camara"].flatMap((e2, i) => ["semana", "mes"].map((t2, j) => cartaoPanorama(e2, t2, rs[i * 2 + j]))).join("")}</div>` +
-      `<p class="sub">Escolha uma instituição e um período abaixo para ver o relatório completo.</p>`;
+    const rs = await Promise.all(["prefeitura", "camara"].map((e2) => { const ch = (idx.padrao[e2] || {}).mes; return ch ? carregar(`relatorios/${e2}_mes_${ch}.json`).catch(() => null) : Promise.resolve(null); }));
+    h += `<div class="grade">${["prefeitura", "camara"].map((e2, i) => cartaoPanorama(e2, "mes", rs[i])).join("")}</div><p class="sub">Escolha uma instituição para ver o relatório completo e os meses anteriores.</p>`;
     REL.chave = null;
   }
-  h += `<nav class="subnav" aria-label="Instituição">${["prefeitura", "camara"].map((e2) => `<a href="${nav(e2, REL.tipo)}" ${ent && REL.ent === e2 ? 'aria-current="true"' : ""}>${NOME_INST[e2]}</a>`).join("")}</nav>`;
+  h += `<nav class="subnav" aria-label="Instituição">${["prefeitura", "camara"].map((e2) => `<a href="${nav(e2)}" ${ent && REL.ent === e2 ? 'aria-current="true"' : ""}>${NOME_INST[e2]}</a>`).join("")}</nav>`;
   if (ent) {
-    h += `<nav class="subnav" aria-label="Tipo de período">${["semana", "mes"].map((t2) => `<a href="${nav(REL.ent, t2)}" ${REL.tipo === t2 ? 'aria-current="true"' : ""}>${t2 === "semana" ? "Semana" : "Mês"}</a>`).join("")}</nav>` +
-      (lista.length ? `<div class="ferramentas"><label>Período<select id="rel-periodo">${lista.map((i) => `<option value="${esc(i.chave)}" ${i.chave === escolhida ? "selected" : ""}>${esc(i.rotulo)}${i.parcial ? " (em andamento)" : ""}</option>`).join("")}</select></label></div>` : "") +
+    h += (lista.length ? `<div class="ferramentas"><label>Mês<select id="rel-periodo">${lista.map((i) => `<option value="${esc(i.chave)}" ${i.chave === escolhida ? "selected" : ""}>${esc(i.rotulo)}${i.parcial ? " (em andamento)" : ""}</option>`).join("")}</select></label></div>` : "") +
       `<section id="rel-corpo" aria-live="polite"><p class="carregando">Carregando…</p></section>`;
   }
   $("#pagina").innerHTML = h;
   if (!ent) return;
   const sel = $("#rel-periodo");
-  if (sel) sel.onchange = () => { location.hash = nav(REL.ent, REL.tipo, sel.value); };
+  if (sel) sel.onchange = () => { location.hash = nav(REL.ent, sel.value); };
   const corpo = $("#rel-corpo");
-  if (!escolhida) { corpo.innerHTML = `<p class="vazio">Sem relatório disponível para este tipo de período.</p>`; return; }
+  if (!escolhida) { corpo.innerHTML = `<p class="vazio">Sem relatório disponível ainda.</p>`; return; }
   try {
-    const r = await carregar(`relatorios/${REL.ent}_${REL.tipo}_${escolhida}.json`);
+    const r = await carregar(`relatorios/${REL.ent}_mes_${escolhida}.json`);
     corpo.innerHTML = corpoRelatorio(r) +
-      `<div class="compartilhar compartilhar-claro"><a href="https://wa.me/?text=${encodeURIComponent(`${r.texto.titulo}: ${r.texto.resumo} — ${location.origin}${location.pathname}#/relatorio/${REL.ent}/${REL.tipo}/${escolhida}`)}" target="_blank" rel="noopener">Compartilhar no WhatsApp</a></div>`;
+      `<div class="compartilhar compartilhar-claro"><a href="https://wa.me/?text=${encodeURIComponent(`${r.texto.titulo}: ${r.texto.resumo} — ${location.origin}${location.pathname}#/relatorio/${REL.ent}/mes/${escolhida}`)}" target="_blank" rel="noopener">Compartilhar no WhatsApp</a></div>`;
   } catch (e) { corpo.innerHTML = `<div class="aviso-caixa">Não foi possível carregar este relatório: ${esc(e.message)}</div>`; }
 }
