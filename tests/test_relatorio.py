@@ -93,6 +93,42 @@ class Fatos(Base):
         self.assertEqual(rel.num(2189), "2.189")
 
 
+class Diarias(Base):
+    def dia(self, codif, cargo, reais, data="2026-10-05", elem="Diárias - Civil", anul=0, qtd="2"):
+        self.conn.execute("INSERT INTO diaria (entidade, exercicio, data, valor, valor_anulado, quantidade, elemento, codif, favorecido, cargo) "
+                          "VALUES ('camara',2026,?,?,?,?,?,?,'NOME','"+cargo+"')", (data, round(reais * 100), round(anul * 100), qtd, elem, codif))
+
+    def setUp(self):
+        super().setUp()
+        self.conn.execute("INSERT INTO vereador (id, nome, nome_norm, cpf_mascarado) VALUES (1,'VEREADOR UM','VEREADOR UM','111.XXX.XXX-11'), (2,'VEREADORA DOIS','VEREADORA DOIS','222.XXX.XXX-22')")
+        self.conn.execute("INSERT INTO vereador_folha VALUES (1,2026,10,'VEREADOR','x','',100,0,1), (2,2026,10,'VEREADOR','x','',100,0,1)")
+        self.conn.execute("INSERT INTO vereador_vinculo VALUES ('c1',1,'confirmado','regra',NULL), ('c2',2,'sugerido','regra',NULL)")
+        self.dia("c1", "VEREADOR", 1500, anul=200); self.dia("c1", "VEREADOR", 500, data="2026-10-06")
+        self.dia("c2", "VEREADOR", 300)                                   # vínculo só sugerido: não é nominal
+        for i in range(3): self.dia(f"s{i}", "ASSESSOR", 100)             # servidores: só somados
+        self.dia("c1", "VEREADOR", 999, elem="Passagens Aéreas")          # passagem não é diária
+        self.conn.commit()
+
+    def test_vereadores_nominais_e_demais_somados(self):
+        d = rel._diarias(self.conn, "camara", date(2026, 10, 5), date(2026, 10, 7))
+        self.assertEqual(d["vereadores"], [{"nome": "VEREADOR UM", "qtd": 2, "dias": 4.0, "valor": 180000}])
+        self.assertEqual(d["pendentes"], {"qtd": 1, "valor": 30000})
+        self.assertEqual(d["servidores"], {"qtd": 3, "valor": 30000, "pessoas": 3})
+        self.assertEqual(d["qtd"], 6)                                      # passagem fora
+        self.assertEqual(d["valor"], 180000 + 30000 + 30000)
+
+    def test_ficha_da_ia_nao_leva_nomes(self):
+        d = rel._diarias(self.conn, "camara", date(2026, 10, 5), date(2026, 10, 7))
+        f = {"entidade": "camara", "nome": "Câmara", "rotulo": "x", "parcial": False, "ate": "2026-10-07", "dias_com_registro": 2,
+             "emissao": {"qtd": 1, "empenhado": 1, "anulado": 0, "liquidado": 0, "pago": 0},
+             "comparacao": {"variacao_pct": None}, "orgaos": [], "elementos": [], "fornecedores": [], "pessoas_fisicas": None, "maiores": [],
+             "modalidades": [], "licitacoes": {"qtd": 0, "valor": 0, "por_modalidade": []}, "contratos": {"qtd": 0, "valor": 0},
+             "dia_pico": {"data": "2026-10-05", "empenhado": 1, "pct": None}, "camara": {"diarias": d, "verba": {}}}
+        txt = json.dumps(rel.ficha(f), ensure_ascii=False) + json.dumps(rel.modelo_fixo(f), ensure_ascii=False)
+        self.assertNotIn("VEREADOR UM", txt)
+        self.assertIn("vereadores: R$ 1,8 mil", txt)
+
+
 class Verificacao(Base):
     def setUp(self):
         super().setUp()

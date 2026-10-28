@@ -15,6 +15,8 @@ from datetime import date, timedelta
 
 from . import config, db
 from .publicar import ROTULO_PF, pf_oculta
+from .publicar_camara import _dias, ehdiaria
+from .coleta.camara import eh_vereador
 
 log = logging.getLogger(__name__)
 
@@ -144,6 +146,35 @@ def _top(d: dict, n=5):
     return sorted(((k, v) for k, v in d.items() if v > 0), key=lambda kv: -kv[1])[:n]
 
 
+def _diarias(conn, ent: str, ini: date, ate: date) -> dict:
+    """Diárias do período (mesmo critério da aba Câmara: elemento de diária, líquido de anulações, sem passagens).
+    Vereadores com vínculo confirmado e com folha no ano aparecem com nome; os demais servidores só entram somados (sem nomes)."""
+    rows = [dict(r) for r in conn.execute("SELECT * FROM diaria WHERE entidade=? AND data BETWEEN ? AND ?", (ent, ini.isoformat(), ate.isoformat()))
+            if ehdiaria(r["elemento"])]
+    anos = {ini.year, ate.year}
+    ver = {}
+    for r in conn.execute("SELECT DISTINCT vi.codif, v.id vid, v.nome FROM vereador_vinculo vi JOIN vereador v ON v.id=vi.vereador_id "
+                          "JOIN vereador_folha f ON f.vereador_id=v.id WHERE vi.status='confirmado' AND f.ano IN (%s)" % ",".join("?" * len(anos)), tuple(anos)):
+        ver[r["codif"]] = (r["vid"], r["nome"])
+    liq = lambda d: d["valor"] - d["valor_anulado"]
+    por_ver, pend, serv = {}, [], []
+    for d in rows:
+        if d["codif"] in ver:
+            vid, nome = ver[d["codif"]]
+            a = por_ver.setdefault(vid, {"nome": nome, "qtd": 0, "dias": 0.0, "valor": 0})
+            a["qtd"] += 1; a["dias"] += _dias(d["quantidade"]); a["valor"] += liq(d)
+        elif eh_vereador(d["cargo"]):
+            pend.append(d)
+        else:
+            serv.append(d)
+    lista = sorted(({**a, "dias": round(a["dias"], 2)} for a in por_ver.values()), key=lambda a: (-a["valor"], a["nome"]))
+    pessoas = len({d["codif"] for d in serv})
+    return {"qtd": len(rows), "valor": sum(liq(d) for d in rows), "vereadores": lista,
+            "vereadores_valor": sum(a["valor"] for a in lista), "vereadores_qtd": sum(a["qtd"] for a in lista),
+            "pendentes": {"qtd": len(pend), "valor": sum(liq(d) for d in pend)},
+            "servidores": {"qtd": len(serv), "valor": sum(liq(d) for d in serv), "pessoas": pessoas if pessoas >= config.K_ANONIMATO else None}}
+
+
 def fatos(conn, ent: str, tipo: str, chave: str, ini: date, fim: date, ref: date) -> dict | None:
     """Números do período, até a data de referência do portal. None se o portal ainda não tem nada no período."""
     ate = min(fim, ref)
@@ -216,12 +247,10 @@ def fatos(conn, ent: str, tipo: str, chave: str, ini: date, fim: date, ref: date
     f["licitacoes"] = {"qtd": len(lic), "valor": sum(r["valor"] or 0 for r in lic), "por_modalidade": [{"nome": k, "qtd": v} for k, v in sorted(pm_l.items(), key=lambda kv: -kv[1])[:3]]}
     f["contratos"] = {"qtd": len(ctr), "valor": sum(r["valor"] or 0 for r in ctr)}
     if ent == "camara":
-        d = conn.execute("SELECT COUNT(*) n, COALESCE(SUM(valor),0) v, COALESCE(SUM(valor_anulado),0) a FROM diaria WHERE entidade=? AND data BETWEEN ? AND ?",
-                         (ent, ini.isoformat(), ate.isoformat())).fetchone()
+        f["camara"] = {"diarias": _diarias(conn, ent, ini, ate), "verba": {}}
         v = conn.execute("SELECT categoria, COUNT(*) n, SUM(empenhado) e, SUM(pago) p FROM verba_indenizatoria WHERE entidade=? AND data_empenho BETWEEN ? AND ? GROUP BY categoria",
                          (ent, ini.isoformat(), ate.isoformat())).fetchall()
-        f["camara"] = {"diarias": {"qtd": d["n"], "valor": d["v"] - d["a"]},
-                       "verba": {r["categoria"]: {"qtd": r["n"], "empenhado": r["e"], "pago": r["p"]} for r in v}}
+        f["camara"]["verba"] = {r["categoria"]: {"qtd": r["n"], "empenhado": r["e"], "pago": r["p"]} for r in v}
     return f
 
 
@@ -268,7 +297,11 @@ def ficha(f: dict) -> dict:
     x["contratos_assinados_no_periodo"] = f"{plural(ct['qtd'], 'contrato', 'contratos')}, valor {compacto(ct['valor'])}" if ct["qtd"] else "nenhum contrato assinado no período"
     if f.get("camara"):
         cm = f["camara"]
-        x["diarias_no_periodo"] = f"{plural(cm['diarias']['qtd'], 'registro', 'registros')}, {compacto(cm['diarias']['valor'])}" if cm["diarias"]["qtd"] else "nenhuma diária registrada no período"
+        dr = cm["diarias"]
+        x["diarias_no_periodo"] = (f"{plural(dr['qtd'], 'registro', 'registros')}, {compacto(dr['valor'])} no total; vereadores: {compacto(dr['vereadores_valor'])} "
+                                   f"({plural(dr['vereadores_qtd'], 'registro', 'registros')}); demais servidores: {compacto(dr['servidores']['valor'])} "
+                                   f"({plural(dr['servidores']['qtd'], 'registro', 'registros')})" + (f"; aguardando vínculo: {compacto(dr['pendentes']['valor'])}" if dr["pendentes"]["qtd"] else "")
+                                   if dr["qtd"] else "nenhuma diária registrada no período")
         if cm["verba"]:
             x["verba_indenizatoria_e_reembolsos_empenhados_no_periodo"] = "; ".join(
                 f"{'verba indenizatória' if k == 'verba' else 'reembolsos'}: {compacto(v['empenhado'])} empenhado, {compacto(v['pago'])} pago ({plural(v['qtd'], 'empenho', 'empenhos')})" for k, v in cm["verba"].items())

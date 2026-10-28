@@ -66,8 +66,13 @@ function corpoRelatorio(r) {
     `<li>Contratos assinados no período: ${ct.qtd ? `${NUM.format(ct.qtd)} contratos, valor ${brl0(ct.valor)}` : "nenhum"}.</li></ul>`;
   if (f.camara) {
     const v = f.camara.verba, d = f.camara.diarias;
-    h += `<h3>Diárias, verba indenizatória e reembolsos</h3><ul class="limpo"><li>Diárias: ${d.qtd ? `${NUM.format(d.qtd)} registros, ${brl(d.valor)}` : "nenhuma registrada no período"}.</li>` +
-      (Object.keys(v).length ? Object.entries(v).map(([k, x]) => `<li>${k === "verba" ? "Verba indenizatória" : "Reembolsos"}: ${brl(x.empenhado)} empenhado, ${brl(x.pago)} pago (${NUM.format(x.qtd)} empenhos).</li>`).join("") : "<li>Verba indenizatória e reembolsos: nenhum empenho no período.</li>") + `</ul>`;
+    const verbas = Object.keys(v).length ? Object.entries(v).map(([k, x]) => `<li>${k === "verba" ? "Verba indenizatória" : "Reembolsos"}: ${brl(x.empenhado)} empenhado, ${brl(x.pago)} pago (${NUM.format(x.qtd)} empenhos).</li>`).join("") : "<li>Verba indenizatória e reembolsos: nenhum empenho no período.</li>";
+    h += `<h3>Diárias por vereador</h3><p class="sub">Diárias do período, líquidas de anulações, sem passagens e locação de veículos. Vereadores aparecem com nome, como na aba Câmara; os demais servidores entram só somados.</p>` +
+      (d.qtd ? linhasTabela(d.vereadores, [{ t: "Vereador", f: (i) => esc(i.nome) }, { t: "Lançamentos", n: 1, f: (i) => NUM.format(i.qtd) }, { t: "Dias", n: 1, f: (i) => NUM.format(i.dias) }, { t: "Valor", n: 1, f: (i) => brl(i.valor) }]) +
+        `<ul class="limpo"><li><strong>Total de diárias no período:</strong> ${brl(d.valor)} em ${NUM.format(d.qtd)} lançamentos (vereadores: ${brl(d.vereadores_valor)}; demais servidores: ${brl(d.servidores.valor)} em ${NUM.format(d.servidores.qtd)} lançamentos${d.servidores.pessoas ? `, ${NUM.format(d.servidores.pessoas)} pessoas` : ""}).</li>` +
+        (d.pendentes.qtd ? `<li>Aguardando vínculo a vereador: ${brl(d.pendentes.valor)} em ${NUM.format(d.pendentes.qtd)} lançamentos.</li>` : "") + `</ul>`
+        : `<p class="vazio">Nenhuma diária registrada no período.</p>`) +
+      `<h3>Verba indenizatória e reembolsos</h3><ul class="limpo">${verbas}</ul>`;
   }
   h += `<p class="sub">Fonte: <a href="${esc(r.portal)}" rel="noopener">Portal da Transparência ${NOME_INST[f.entidade] === "Câmara" ? "da Câmara" : "da Prefeitura"}</a>. Coletado em ${dataHoraBR(r.coleta)}. Cálculos e limites em <a href="#/metodologia">Metodologia</a>.</p>`;
   return h;
