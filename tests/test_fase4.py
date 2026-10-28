@@ -307,3 +307,22 @@ class StatusDoSite(Base):
         self.conn.commit()
         st = {f["fonte"]: f["status"] for f in site.status(self.conn)["entidades"]["prefeitura"]["fontes"]}
         self.assertEqual(st["ibge_populacao"], "aviso"); self.assertEqual(st["mensal"], "erro")     # outras fontes continuam sendo erro
+
+
+class TestRepublicarSoVisual(unittest.TestCase):
+    def test_usa_dados_do_site_anterior_e_visual_atual(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from contas import site
+        with tempfile.TemporaryDirectory() as t:
+            ant, saida = Path(t) / "ant", Path(t) / "dist"
+            (ant / "data" / "prefeitura").mkdir(parents=True)
+            (ant / "data" / "prefeitura" / "resumo.json").write_text(json.dumps({"anos": {"2026": {"pago": 100000, "habitantes": 10, "coleta_empenhos": "2026-10-08T11:36:00Z"}}}), encoding="utf-8")
+            (ant / "data" / "status.json").write_text('{"marca":"do-site-anterior"}', encoding="utf-8")
+            site.republicar(ant, saida)
+            self.assertEqual((saida / "data" / "status.json").read_text(encoding="utf-8"), '{"marca":"do-site-anterior"}')
+            self.assertTrue((saida / "marca" / "tokens.css").exists())
+            self.assertIn("og:site_name", (saida / "index.html").read_text(encoding="utf-8"))
+            with self.assertRaises(SystemExit):
+                site.republicar(Path(t) / "inexistente", Path(t) / "x")

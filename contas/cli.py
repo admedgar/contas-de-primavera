@@ -7,6 +7,8 @@
   alertas                          detecta novos registros acima dos limites e publica alertas.json/alertas.xml
   notificar                        envia os alertas novos ao webhook (se ALERTA_WEBHOOK_URL definido)
   build    [--saida dist]          monta o site pronto para hospedar (metadados, cartão de compartilhamento, status)
+  republicar --de PASTA [--saida dist]
+                                   monta o site com o visual/código atuais sobre os DADOS do site já publicado em PASTA (sem coletar)
   diario   [--entidade E|todas] [--completo]
                                    o que o agendador roda: coleta, valida, alerta, publica (ambas as entidades)
 Códigos de saída (somam bits):  0 ok · 1 falha de coleta em alguma fonte · 2 divergência de validação (não publicar)
@@ -221,13 +223,14 @@ def _site() -> dict:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="contas", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("comando", choices=["iniciar", "coletar", "derivar", "validar", "publicar", "alertas", "notificar", "build", "diario"])
+    ap.add_argument("comando", choices=["iniciar", "coletar", "derivar", "validar", "publicar", "alertas", "notificar", "build", "republicar", "diario"])
     ap.add_argument("--entidade", default=None, choices=list(config.ENTIDADES) + ["todas"])
     ap.add_argument("--anos", nargs="*", type=int)
     ap.add_argument("--so", nargs="*", choices=sorted(set(FONTES_ANO) | set(FONTES_ENTIDADE) | set(FONTES_ENTIDADE_PREFEITURA) | set(FONTES_ANO_CAMARA) | {"ibge"}))
     ap.add_argument("--force", action="store_true", help="baixa de novo mesmo se já houver download de hoje")
     ap.add_argument("--completo", action="store_true", help="diario: revisa também os anos fechados da janela")
     ap.add_argument("--saida", default=None, help="build: pasta de saída (padrão dist/)")
+    ap.add_argument("--de", default=None, help="republicar: pasta do site já publicado (com data/)")
     ap.add_argument("--db", default=None)
     a = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -247,6 +250,11 @@ def main(argv=None) -> int:
     if a.comando == "build":
         from . import site
         print(site.montar(conn, a.saida)); return 0
+    if a.comando == "republicar":
+        from . import site
+        if not a.de:
+            ap.error("republicar exige --de PASTA")
+        print(site.republicar(a.de, a.saida)); return 0
     if a.comando == "alertas":
         novos = []
         for ent in (list(config.ENTIDADES) if a.entidade in (None, "todas") else [a.entidade]):

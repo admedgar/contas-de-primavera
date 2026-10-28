@@ -38,15 +38,8 @@ def status(conn) -> dict:
     return out
 
 
-def montar(conn, saida=None) -> str:
-    dist = Path(saida or config.DIST)
-    if dist.exists():
-        shutil.rmtree(dist)
-    shutil.copytree(config.RAIZ / "web", dist)
-    try:
-        site = json.loads(config.ARQ_SITE.read_text(encoding="utf-8"))
-    except FileNotFoundError:
-        site = {}
+def _finalizar(dist: Path, site: dict, status_json: dict | None) -> str:
+    """Parte comum do build: metadados, og.png, robots/sitemap. status_json None = manter o status.json já presente em dist/data."""
     (dist / ".nojekyll").write_text("")
     # valores reais para a imagem de prévia
     res = json.loads((dist / "data" / "prefeitura" / "resumo.json").read_text(encoding="utf-8"))
@@ -61,7 +54,8 @@ def montar(conn, saida=None) -> str:
     html = (dist / "index.html").read_text(encoding="utf-8")
     html = html.replace("</head>", _meta_tags(site, config.NOME_SITE, desc) + "\n</head>", 1)
     (dist / "index.html").write_text(html, encoding="utf-8")
-    (dist / "data" / "status.json").write_text(json.dumps(status(conn), ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    if status_json is not None:
+        (dist / "data" / "status.json").write_text(json.dumps(status_json, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     (dist / "data" / "site.json").write_text(json.dumps({k: v for k, v in site.items() if not k.startswith("_")}, ensure_ascii=False), encoding="utf-8")
     url = (site.get("url_site") or "").rstrip("/")
     (dist / "robots.txt").write_text("User-agent: *\nAllow: /\n" + (f"Sitemap: {url}/sitemap.xml\n" if url else ""))
@@ -69,3 +63,32 @@ def montar(conn, saida=None) -> str:
         (dist / "sitemap.xml").write_text(f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>{url}/</loc><lastmod>{date.today().isoformat()}</lastmod></url></urlset>')
     tam = sum(p.stat().st_size for p in dist.rglob("*") if p.is_file())
     return f"site montado em {dist} ({tam / 1e6:.1f} MB; og.png {'gerado' if og else 'NÃO gerado (Pillow ausente)'}; url_site {'definida' if url else 'não definida'})"
+
+
+def _site_config() -> dict:
+    try:
+        return json.loads(config.ARQ_SITE.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {}
+
+
+def montar(conn, saida=None) -> str:
+    dist = Path(saida or config.DIST)
+    if dist.exists():
+        shutil.rmtree(dist)
+    shutil.copytree(config.RAIZ / "web", dist)
+    return _finalizar(dist, _site_config(), status(conn))
+
+
+def republicar(anterior, saida=None) -> str:
+    """Só visual/código: usa a pasta web/ atual (HTML, CSS, JS, marca) e os dados (data/) do site JÁ publicado em `anterior`.
+    Não coleta nem valida nada: os números são exatamente os que já estavam no ar."""
+    anterior = Path(anterior)
+    if not (anterior / "data" / "prefeitura" / "resumo.json").exists():
+        raise SystemExit(f"{anterior}: não parece um site publicado (falta data/prefeitura/resumo.json)")
+    dist = Path(saida or config.DIST)
+    if dist.exists():
+        shutil.rmtree(dist)
+    shutil.copytree(config.RAIZ / "web", dist, ignore=shutil.ignore_patterns("data"))
+    shutil.copytree(anterior / "data", dist / "data")
+    return _finalizar(dist, _site_config(), None)

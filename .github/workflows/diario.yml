@@ -15,11 +15,16 @@ on:
         description: "Revisar também os anos fechados (2 anteriores)"
         type: boolean
         default: false
+      so_visual:
+        description: "Só publicar o código/visual atual sobre os DADOS já publicados (não coleta nem valida)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
   pages: write
   id-token: write
+  actions: read
 
 concurrency:
   group: contas-diario
@@ -71,6 +76,7 @@ jobs:
       - run: pip install -r requirements.txt
 
       - name: Restaurar banco (cache; se não houver, o plano diário reconstrói os 3 anos)
+        if: ${{ !inputs.so_visual }}
         uses: actions/cache/restore@v4
         with:
           path: data/contas.sqlite
@@ -80,11 +86,28 @@ jobs:
       - name: Testes
         run: python -m unittest discover -s tests -t .
 
+      - name: Baixar o site já publicado (só visual)
+        if: ${{ inputs.so_visual }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # artefato do último deploy do Pages = exatamente os dados que estão no ar
+          id=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=github-pages&per_page=1" --jq '.artifacts[0].id')
+          [ -n "$id" ] && [ "$id" != "null" ] || { echo "::error::Nenhum site publicado anterior encontrado."; exit 1; }
+          mkdir -p anterior-zip anterior
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip" > anterior.zip
+          unzip -q anterior.zip -d anterior-zip
+          tar -xf anterior-zip/artifact.tar -C anterior
+
       - name: Coletar, conferir, registrar alertas e gerar JSONs
         id: diario
         run: |
           set +e
-          python -m contas diario ${{ inputs.completo && '--completo' || '' }}
+          if [ "${{ inputs.so_visual }}" = "true" ]; then
+            python -m contas republicar --de anterior
+          else
+            python -m contas diario ${{ inputs.completo && '--completo' || '' }}
+          fi
           rc=$?
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
           # Publica se não houve divergência na conferência (bit 2) e se algo foi coletado (4 = portal fora do ar: nada mudou).
@@ -92,14 +115,14 @@ jobs:
           exit 0
 
       - name: Guardar banco para a próxima execução
-        if: always() && hashFiles('data/contas.sqlite') != ''
+        if: always() && !inputs.so_visual && hashFiles('data/contas.sqlite') != ''
         uses: actions/cache/save@v4
         with:
           path: data/contas.sqlite
           key: contas-db-${{ github.run_id }}
 
       - name: Montar site
-        if: steps.diario.outputs.publicar == 'true'
+        if: steps.diario.outputs.publicar == 'true' && !inputs.so_visual
         run: python -m contas build
       - name: Configurar Pages
         if: steps.diario.outputs.publicar == 'true'
@@ -119,7 +142,7 @@ jobs:
         run: npx --yes vercel@latest deploy dist --prod --yes --token "$VERCEL_TOKEN"
 
       - name: Avisar novos alertas (webhook opcional)
-        if: steps.diario.outputs.publicar == 'true'
+        if: steps.diario.outputs.publicar == 'true' && !inputs.so_visual
         env:
           ALERTA_WEBHOOK_URL: ${{ secrets.ALERTA_WEBHOOK_URL }}
         run: python -m contas notificar
